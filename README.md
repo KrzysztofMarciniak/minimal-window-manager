@@ -21,7 +21,7 @@ Makefile:
 ```bash
 -DAUDIO_SCRIPT="\"$(shell pwd)/audio.sh\""
 ```
-or (after compiling `gcc audio.sh -o audio`):
+or (after compiling `gcc audio.c -o audio`):
 ```bash
 -DAUDIO_SCRIPT="\"$(shell pwd)/audio\""
 ```
