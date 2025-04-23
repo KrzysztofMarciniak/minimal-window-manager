@@ -1,19 +1,16 @@
 # Minimal Window Manager (MWM)
 
-MWM (Minimal Window Manager) is a lightweight, minimalistic window manager written in **C**. It was designed with the following guiding principles:
-
+MWM (Minimal Window Manager) is a lightweight, minimalistic window manager written in **C**.
+ 
+It was designed with the following guiding principles:
 * < 500 lines of code (clang-formatted).
 * High Performance.
-* No status bar.
+* No status bar, Borders or Gaps. ([if you want them, use mwm+](https://github.com/KrzysztofMarciniak/minimal-window-manager-plus)
 * No floating windows.
 * No compiler warnings, clean builds only.
 * One file.
 
 ## Getting Started
-
-### Patches
-* Want gaps and borders?
-* patch main.c < patches/useless_gaps_and_borders.patch
 
 ### Media Keys
 Below are two examples for handling media keys. You can modify these to suit your needs. To use them out of the box, you will need [herbe](https://github.com/dudik/herbe), or modify (`notifications_daemon="/usr/local/bin/herbe"` - .sh) or (`#define NOTIFICATIONS_DAEMON "/usr/local/bin/herbe"` - .c)
