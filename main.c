@@ -348,20 +348,25 @@ static void handleUnmapNotify(XEvent *e) {
     }
   }
 }
+
 static void handleDestroyNotify(XEvent *e) {
   Window win = e->xdestroywindow.window;
-  Desktop *d = &desktops[currentDesktop];
-  for (unsigned char i = 0; i < d->windowCount; i++) {
-    if (d->windows[i] == win) {
-      d->isMapped[i] = 0;
-      d->windowCount--;
-      for (unsigned char j = i; j < d->windowCount; j++) {
-        d->windows[j]  = d->windows[j + 1];
-        d->isMapped[j] = d->isMapped[j + 1];
+  for (unsigned char d_idx = 0; d_idx < MAX_DESKTOPS; d_idx++) {
+      Desktop *d = &desktops[d_idx];
+      for (unsigned char i = 0; i < d->windowCount; i++) {
+          if (d->windows[i] == win) {
+              d->isMapped[i] = 0;
+              for (unsigned char j = i; j < d->windowCount - 1; j++) {
+                  d->windows[j]  = d->windows[j + 1];
+                  d->isMapped[j] = d->isMapped[j + 1];
+              }
+              d->windowCount--;
+              if (d_idx == currentDesktop) {
+                  tileWindows();
+              }
+              break;
+          }
       }
-      tileWindows();
-      break;
-    }
   }
 }
 static void cleanup(void) {
@@ -418,7 +423,6 @@ static void handleMapRequest(XEvent *e) {
   XMapRequestEvent *ev = &e->xmaprequest;
   mapWindowToDesktop(ev->window);
 }
-
 static void handleMapNotify(XEvent *e) {
   XMapEvent *ev = &e->xmap;
   Desktop *d    = &desktops[currentDesktop];
