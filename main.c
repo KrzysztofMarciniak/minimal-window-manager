@@ -35,6 +35,7 @@ typedef struct {
   _Bool isMapped[MAX_WINDOWS_PER_DESKTOP];
 } Desktop;
 static Display *dpy;
+static _Bool IsSwitching = False;
 static Window root;
 static Desktop desktops[MAX_DESKTOPS];
 static unsigned char currentDesktop  = 0;
@@ -326,6 +327,7 @@ static void moveWindowToDesktop(Window win, unsigned char desktop) {
 }
 inline static void focusWindow(Window w) { XSetInputFocus(dpy, w, RevertToParent, CurrentTime); }
 static void handleUnmapNotify(XEvent *e) {
+  if (IsSwitching) return;
   Window win = e->xunmap.window;
   Desktop *d = &desktops[currentDesktop];
   for (unsigned char i = 0; i < d->windowCount; i++) {
@@ -427,9 +429,10 @@ static void handleMapNotify(XEvent *e) {
       break;
     }
   }
-}
-static void switchDesktop(int desktop) {
+}static void switchDesktop(int desktop) {
   if (desktop == currentDesktop || desktop < 0 || desktop >= MAX_DESKTOPS) return;
+  if (IsSwitching) return;
+  IsSwitching = 1;
   Desktop *current = &desktops[currentDesktop];
   for (unsigned char i = 0; i < current->windowCount; i++) {
     XUnmapWindow(dpy, current->windows[i]);
@@ -443,4 +446,5 @@ static void switchDesktop(int desktop) {
   if (target->windowCount > 0) {
     focusWindow(target->windows[target->focusedIdx]);
   }
+  IsSwitching = 0;
 }
