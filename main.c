@@ -63,7 +63,7 @@ static void handleMapNotify(XEvent *e);
 inline static void die(const char *msg);
 static inline int detachWindow(Window w, Window *windows, unsigned char *windowCount,
                                unsigned char *focusedIdx, _Bool *isMapped);
-
+static inline int detachWindowFromDesktop(Window w, Desktop *d);
 static short resizeDelta = 0;
 int main(void) {
   signal(SIGTERM, sigHandler);
@@ -110,7 +110,6 @@ static void setup(void) {
   XSelectInput(dpy, root, SubstructureRedirectMask | SubstructureNotifyMask | StructureNotifyMask);
   Cursor cursor = XCreateFontCursor(dpy, 68);
   XDefineCursor(dpy, root, cursor);
-  XSync(dpy, False);
   XSetErrorHandler(xerror);
   grabKeys();
   XSync(dpy, False);
@@ -333,7 +332,6 @@ static void handleUnmapNotify(XEvent *e) {
   for (unsigned char i = 0; i < d->windowCount; i++) {
     if (d->windows[i] == win) {
       d->isMapped[i] = 0;
-      XUnmapWindow(dpy, win);
       if (i == d->focusedIdx && d->windowCount > 1) {
         d->focusedIdx = (i + 1) % d->windowCount;
         focusWindow(d->windows[d->focusedIdx]);
@@ -348,7 +346,6 @@ static void handleUnmapNotify(XEvent *e) {
     }
   }
 }
-
 static void handleDestroyNotify(XEvent *e) {
   Window win = e->xdestroywindow.window;
   for (unsigned char d_idx = 0; d_idx < MAX_DESKTOPS; d_idx++) {
