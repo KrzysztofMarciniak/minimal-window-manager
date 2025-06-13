@@ -32,7 +32,6 @@ typedef struct {
         Window windows[MAX_WINDOWS_PER_DESKTOP];
         unsigned char windowCount;
         unsigned char focusedIdx;
-        _Bool isMapped[MAX_WINDOWS_PER_DESKTOP];
 } Desktop;
 static Display *dpy;
 static _Bool IsSwitching = False;
@@ -106,32 +105,31 @@ static void setup(void) {
         XSync(dpy, False);
 }
 static void grabKeys(void) {
-        const unsigned int modifiers[] = {MOD_KEY, MOD_KEY | ShiftMask};
-        const unsigned char modCount   = sizeof(modifiers) / sizeof(modifiers[0]);
-        KeyCode keycodes[40];
-        int k = 0;
         for (unsigned char i = 0; i < MAX_DESKTOPS; i++) {
-                keycodes[k++] = XKeysymToKeycode(dpy, XK_1 + i);
-        }
-        KeySym specialKeys[] = {XK_q, XK_j, XK_k, XK_h, XK_l};
-        for (size_t i = 0; i < sizeof(specialKeys) / sizeof(specialKeys[0]); i++) {
-                keycodes[k++] = XKeysymToKeycode(dpy, specialKeys[i]);
-        }
-        for (int i = 0; i < k; i++) {
-                if (keycodes[i] == 0) continue;
-                for (unsigned char j = 0; j < modCount; j++) {
-                        XGrabKey(dpy, keycodes[i], modifiers[j], root, True, GrabModeAsync,
+                KeyCode code = XKeysymToKeycode(dpy, XK_1 + i);
+                if (code != 0) {
+                        XGrabKey(dpy, code, MOD_KEY, root, True, GrabModeAsync, GrabModeAsync);
+                        XGrabKey(dpy, code, MOD_KEY | ShiftMask, root, True, GrabModeAsync,
                                  GrabModeAsync);
                 }
         }
-        const size_t launcherCount = sizeof(launchers) / sizeof(launchers[0]);
-        for (size_t i = 0; i < launcherCount; i++) {
+        KeySym wmKeys[] = {XK_q, XK_j, XK_k, XK_h, XK_l};
+        for (size_t i = 0; i < sizeof(wmKeys) / sizeof(wmKeys[0]); i++) {
+                KeyCode code = XKeysymToKeycode(dpy, wmKeys[i]);
+                if (code != 0) {
+                        XGrabKey(dpy, code, MOD_KEY, root, True, GrabModeAsync, GrabModeAsync);
+                        XGrabKey(dpy, code, MOD_KEY | ShiftMask, root, True, GrabModeAsync,
+                                 GrabModeAsync);
+                }
+        }
+        for (size_t i = 0; i < sizeof(launchers) / sizeof(launchers[0]); i++) {
                 KeyCode code = XKeysymToKeycode(dpy, launchers[i].keysym);
                 if (code != 0) {
                         XGrabKey(dpy, code, MOD_KEY, root, True, GrabModeAsync, GrabModeAsync);
                 }
         }
 }
+
 static void run(void) {
         XEvent e;
         fd_set fds;
@@ -278,11 +276,9 @@ static void moveWindowToDesktop(Window win, unsigned char desktop) {
                 }
         }
         if (windowIdx == -1) return;
-        _Bool wasMapped = current->isMapped[windowIdx];
         removeWindowFromDesktop(win, current);
         int newIdx               = target->windowCount;
         target->windows[newIdx]  = win;
-        target->isMapped[newIdx] = wasMapped;
         target->windowCount++;
         XUnmapWindow(dpy, win);
         tileWindows();
@@ -293,7 +289,6 @@ static void removeWindowFromDesktop(Window win, Desktop *d) {
                 if (d->windows[i] == win) {
                         for (unsigned char j = i; j < d->windowCount - 1; j++) {
                                 d->windows[j]  = d->windows[j + 1];
-                                d->isMapped[j] = d->isMapped[j + 1];
                         }
                         d->windowCount--;
                         if (d->focusedIdx >= d->windowCount && d->windowCount > 0) {
@@ -337,37 +332,31 @@ static void cleanup(void) {
         XCloseDisplay(dpy);
 }
 static void tileWindows(void) {
-        Desktop *d          = &desktops[currentDesktop];
-        unsigned char count = d->windowCount;
-        if (count == 0) return;
-        unsigned char masterCount = count > 1 ? 1 : 0;
-        unsigned char stackCount  = count - masterCount;
-        int masterWidth           = (screen_width + (resizeDelta << 1)) >> 1;
-        if (masterWidth < 100) masterWidth = 100;
-        if (masterWidth > screen_width - 100) masterWidth = screen_width - 100;
-        int stackWidth   = screen_width - masterWidth;
-        int masterHeight = screen_height / masterCount;
-        int stackHeight  = screen_height / stackCount;
-        if (count == 1) {
+        Desktop *d = &desktops[currentDesktop];
+        if (d->windowCount == 0) return;
+        if (d->windowCount == 1) {
                 XMoveResizeWindow(dpy, d->windows[0], 0, 0, screen_width, screen_height);
                 XRaiseWindow(dpy, d->windows[0]);
                 return;
         }
-        if (masterCount > 0) {
-                XMoveResizeWindow(dpy, d->windows[0], 0, 0, masterWidth, masterHeight);
-        }
-        for (unsigned char i = 0; i < stackCount; i++) {
-                XMoveResizeWindow(dpy, d->windows[i + masterCount], masterWidth, i * stackHeight,
+        int masterWidth = (screen_width + (resizeDelta << 1)) >> 1;
+        masterWidth     = (masterWidth < 100)                  ? 100
+                          : (masterWidth > screen_width - 100) ? screen_width - 100
+                                                               : masterWidth;
+        int stackWidth  = screen_width - masterWidth;
+        int stackHeight = screen_height / (d->windowCount - 1);
+        XMoveResizeWindow(dpy, d->windows[0], 0, 0, masterWidth, screen_height);
+        for (unsigned char i = 1; i < d->windowCount; i++) {
+                XMoveResizeWindow(dpy, d->windows[i], masterWidth, (i - 1) * stackHeight,
                                   stackWidth, stackHeight);
         }
-        XRaiseWindow(dpy, d->windows[0]);
+        XRaiseWindow(dpy, d->windows[d->focusedIdx]);
 }
 static void mapWindowToDesktop(Window win) {
         Desktop *d = &desktops[currentDesktop];
         if (d->windowCount < MAX_WINDOWS_PER_DESKTOP) {
                 int idx          = d->windowCount;
                 d->windows[idx]  = win;
-                d->isMapped[idx] = 1;
                 d->windowCount++;
                 d->focusedIdx = idx;
                 XMapWindow(dpy, win);
@@ -386,8 +375,7 @@ static void handleMapNotify(XEvent *e) {
         XMapEvent *ev = &e->xmap;
         Desktop *d    = &desktops[currentDesktop];
         for (unsigned char i = 0; i < d->windowCount; i++) {
-                if (d->windows[i] == ev->window && !d->isMapped[i]) {
-                        d->isMapped[i] = 1;
+                if (d->windows[i] == ev->window) {
                         tileWindows();
                         break;
                 }
