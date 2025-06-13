@@ -94,14 +94,6 @@ static void setup(void) {
         if (!getenv("DISPLAY")) die("DISPLAY not set");
         if (!(dpy = XOpenDisplay(NULL))) die("cannot open display");
         root = DefaultRootWindow(dpy);
-        for (unsigned char i = 0; i < MAX_DESKTOPS; i++) {
-                desktops[i].windowCount = 0;
-                desktops[i].focusedIdx  = 0;
-                for (unsigned char j = 0; j < MAX_WINDOWS_PER_DESKTOP; j++) {
-                        desktops[i].windows[j]  = None;
-                        desktops[i].isMapped[j] = 0;
-                }
-        }
         XWindowAttributes attr;
         XGetWindowAttributes(dpy, root, &attr);
         screen_width  = attr.width;
