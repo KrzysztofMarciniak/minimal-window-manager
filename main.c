@@ -60,10 +60,8 @@ static int xerror(Display *, XErrorEvent *);
 static void killFocusedWindow(void);
 static void focusCycleWindow(int);
 static void handleMapNotify(XEvent *e);
+static void removeWindowFromDesktop(Window win, Desktop *d);
 inline static void die(const char *msg);
-static inline int detachWindow(Window w, Window *windows, unsigned char *windowCount,
-                               unsigned char *focusedIdx, _Bool *isMapped);
-static inline int detachWindowFromDesktop(Window w, Desktop *d);
 static short resizeDelta = 0;
 int main(void) {
         signal(SIGTERM, sigHandler);
@@ -267,35 +265,6 @@ static void handleKeyPress(XEvent *e) {
                 }
         }
 }
-static inline int detachWindowFromDesktop(Window w, Desktop *d) {
-        if (!d) return 0;
-        if (currentDesktop >= MAX_DESKTOPS || d->windowCount > MAX_WINDOWS_PER_DESKTOP) return 0;
-        return detachWindow(w, d->windows, &d->windowCount, &d->focusedIdx, d->isMapped);
-}
-static inline int detachWindow(Window w, Window *windows, unsigned char *windowCount,
-                               unsigned char *focusedIdx, _Bool *isMapped) {
-        if (!windows || !windowCount || !focusedIdx) return 0;
-        unsigned char count = *windowCount;
-        if (count == 0 || count > MAX_WINDOWS_PER_DESKTOP) return 0;
-        for (unsigned char i = 0; i < count; i++) {
-                if (windows[i] == w) {
-                        if (i < count - 1) {
-                                for (unsigned char j = i; j < count - 1; j++) {
-                                        windows[j] = windows[j + 1];
-                                        if (isMapped) {
-                                                isMapped[j] = isMapped[j + 1];
-                                        }
-                                }
-                        }
-                        *windowCount = count - 1;
-                        if (*focusedIdx >= *windowCount) {
-                                *focusedIdx = *windowCount ? (*windowCount - 1) : 0;
-                        }
-                        return 1;
-                }
-        }
-        return 0;
-}
 static void moveWindowToDesktop(Window win, unsigned char desktop) {
         if (desktop >= MAX_DESKTOPS || desktop == currentDesktop) return;
         Desktop *target = &desktops[desktop];
@@ -310,7 +279,7 @@ static void moveWindowToDesktop(Window win, unsigned char desktop) {
         }
         if (windowIdx == -1) return;
         _Bool wasMapped = current->isMapped[windowIdx];
-        if (!detachWindowFromDesktop(win, current)) return;
+        removeWindowFromDesktop(win, current);
         int newIdx               = target->windowCount;
         target->windows[newIdx]  = win;
         target->isMapped[newIdx] = wasMapped;
@@ -319,22 +288,32 @@ static void moveWindowToDesktop(Window win, unsigned char desktop) {
         tileWindows();
 }
 inline static void focusWindow(Window w) { XSetInputFocus(dpy, w, RevertToParent, CurrentTime); }
+static void removeWindowFromDesktop(Window win, Desktop *d) {
+        for (unsigned char i = 0; i < d->windowCount; i++) {
+                if (d->windows[i] == win) {
+                        for (unsigned char j = i; j < d->windowCount - 1; j++) {
+                                d->windows[j]  = d->windows[j + 1];
+                                d->isMapped[j] = d->isMapped[j + 1];
+                        }
+                        d->windowCount--;
+                        if (d->focusedIdx >= d->windowCount && d->windowCount > 0) {
+                                d->focusedIdx = d->windowCount - 1;
+                        }
+                        break;
+                }
+        }
+}
 static void handleUnmapNotify(XEvent *e) {
         if (IsSwitching) return;
         Window win = e->xunmap.window;
         Desktop *d = &desktops[currentDesktop];
         for (unsigned char i = 0; i < d->windowCount; i++) {
                 if (d->windows[i] == win) {
-                        d->isMapped[i] = 0;
                         if (i == d->focusedIdx && d->windowCount > 1) {
                                 d->focusedIdx = (i + 1) % d->windowCount;
                                 focusWindow(d->windows[d->focusedIdx]);
                         }
-                        for (unsigned char j = i; j < d->windowCount - 1; j++) {
-                                d->windows[j]  = d->windows[j + 1];
-                                d->isMapped[j] = d->isMapped[j + 1];
-                        }
-                        d->windowCount--;
+                        removeWindowFromDesktop(win, d);
                         tileWindows();
                         return;
                 }
@@ -343,20 +322,9 @@ static void handleUnmapNotify(XEvent *e) {
 static void handleDestroyNotify(XEvent *e) {
         Window win = e->xdestroywindow.window;
         for (unsigned char d_idx = 0; d_idx < MAX_DESKTOPS; d_idx++) {
-                Desktop *d = &desktops[d_idx];
-                for (unsigned char i = 0; i < d->windowCount; i++) {
-                        if (d->windows[i] == win) {
-                                d->isMapped[i] = 0;
-                                for (unsigned char j = i; j < d->windowCount - 1; j++) {
-                                        d->windows[j]  = d->windows[j + 1];
-                                        d->isMapped[j] = d->isMapped[j + 1];
-                                }
-                                d->windowCount--;
-                                if (d_idx == currentDesktop) {
-                                        tileWindows();
-                                }
-                                break;
-                        }
+                removeWindowFromDesktop(win, &desktops[d_idx]);
+                if (d_idx == currentDesktop) {
+                        tileWindows();
                 }
         }
 }
