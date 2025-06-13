@@ -9,17 +9,14 @@
 #include <stdlib.h>
 #include <sys/select.h>
 #include <unistd.h>
-
 #define RESIZE_STEP 50
 #define MAX_DESKTOPS 9
 #define MAX_WINDOWS_PER_DESKTOP 6
 #define MOD_KEY Mod4Mask
-
 typedef struct {
         KeySym keysym;
         const char *command;
 } AppLauncher;
-
 static const AppLauncher launchers[] = {{XK_Return, "st"},
                                         {XK_p,
                                          "dmenu_run -m '0' -nb '#000000' -nf '#ffffff' -sb "
@@ -129,7 +126,6 @@ static void grabKeys(void) {
                 }
         }
 }
-
 static void run(void) {
         XEvent e;
         fd_set fds;
@@ -277,8 +273,8 @@ static void moveWindowToDesktop(Window win, unsigned char desktop) {
         }
         if (windowIdx == -1) return;
         removeWindowFromDesktop(win, current);
-        int newIdx               = target->windowCount;
-        target->windows[newIdx]  = win;
+        int newIdx              = target->windowCount;
+        target->windows[newIdx] = win;
         target->windowCount++;
         XUnmapWindow(dpy, win);
         tileWindows();
@@ -288,7 +284,7 @@ static void removeWindowFromDesktop(Window win, Desktop *d) {
         for (unsigned char i = 0; i < d->windowCount; i++) {
                 if (d->windows[i] == win) {
                         for (unsigned char j = i; j < d->windowCount - 1; j++) {
-                                d->windows[j]  = d->windows[j + 1];
+                                d->windows[j] = d->windows[j + 1];
                         }
                         d->windowCount--;
                         if (d->focusedIdx >= d->windowCount && d->windowCount > 0) {
@@ -355,8 +351,8 @@ static void tileWindows(void) {
 static void mapWindowToDesktop(Window win) {
         Desktop *d = &desktops[currentDesktop];
         if (d->windowCount < MAX_WINDOWS_PER_DESKTOP) {
-                int idx          = d->windowCount;
-                d->windows[idx]  = win;
+                int idx         = d->windowCount;
+                d->windows[idx] = win;
                 d->windowCount++;
                 d->focusedIdx = idx;
                 XMapWindow(dpy, win);
