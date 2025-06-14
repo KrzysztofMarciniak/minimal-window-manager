@@ -155,28 +155,21 @@ static void run(void) {
         fd_set fds;
         int xfd = ConnectionNumber(dpy);
         while (running) {
-                while (XPending(dpy)) {
+                while (XPending(
+                    dpy)) {// switches cost 0.01ki in .text, probably generating jump table.
                         XNextEvent(dpy, &e);
-                        switch (e.type) {
-                                case KeyPress:
-                                        handleKeyPress(&e);
-                                        break;
-                                case MapRequest:
-                                        handleMapRequest(&e);
-                                        break;
-                                case MapNotify:
-                                        handleMapNotify(&e);
-                                        break;
-                                case UnmapNotify:
-                                        handleUnmapNotify(&e);
-                                        break;
-                                case DestroyNotify:
-                                        handleDestroyNotify(&e);
-                                        break;
-                                case ConfigureNotify:
-                                        handleConfigureNotify(&e);
-                                        break;
-                        }
+                        if (e.type == KeyPress)
+                                handleKeyPress(&e);
+                        else if (e.type == MapRequest)
+                                handleMapRequest(&e);
+                        else if (e.type == MapNotify)
+                                handleMapNotify(&e);
+                        else if (e.type == UnmapNotify)
+                                handleUnmapNotify(&e);
+                        else if (e.type == DestroyNotify)
+                                handleDestroyNotify(&e);
+                        else if (e.type == ConfigureNotify)
+                                handleConfigureNotify(&e);
                 }
                 FD_ZERO(&fds);
                 FD_SET(xfd, &fds);
