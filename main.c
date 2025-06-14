@@ -7,11 +7,14 @@
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/mman.h>
 #include <sys/select.h>
 #include <unistd.h>
 #define RESIZE_STEP 50
 #define MAX_DESKTOPS 9           // 256 limit
 #define MAX_WINDOWS_PER_DESKTOP 6// 256 limit
+#define P_CURRENT_DESKTOP (&desktops[currentDesktop])
+#define P_DESKTOPS (&desktops[MAX_DESKTOPS])
 #define MOD_KEY Mod4Mask
 #define ARRAY_LEN(arr) (sizeof(arr) / sizeof((arr)[0]))
 typedef struct {
@@ -26,15 +29,15 @@ static const AppLauncher launchers[] = {{XK_Return, "st"},
                                         {XF86XK_AudioLowerVolume, AUDIO_SCRIPT " -"},
                                         {XF86XK_AudioMicMute, AUDIO_SCRIPT " mic"},
                                         {XF86XK_AudioMute, AUDIO_SCRIPT " aud"}};
-typedef struct {
+typedef struct {// if we use 4 : bits on each, it will rise 0.2Ki
         Window windows[MAX_WINDOWS_PER_DESKTOP];
         unsigned char windowCount;
         unsigned char focusedIdx;
 } Desktop;
 static Display *dpy;
-static Bool IsSwitching = False;
+static Bool IsSwitching  = False;
+static Desktop *desktops = NULL;
 static Window root;
-static Desktop desktops[MAX_DESKTOPS];
 static unsigned char currentDesktop  = 0;
 static volatile sig_atomic_t running = 1;
 // screen resolution fits within 0–65,535 range, too large for unsigned char
@@ -66,6 +69,17 @@ inline static void focusCycleWindow(Bool);
 static void handleMapNotify(XEvent *e);
 static void removeWindowFromDesktop(Window win, Desktop *d);
 inline static void die(const char *msg);
+inline static void initDesktops(void);
+inline static void cleanupDesktops(void);
+inline static void initDesktops(void) {
+        size_t size = sizeof(Desktop) * MAX_DESKTOPS;
+        desktops    = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+        if (desktops == MAP_FAILED) {
+                perror("mmap");
+                exit(1);
+        }
+}
+static inline void cleanupDesktops() { munmap(desktops, sizeof(Desktop) * MAX_DESKTOPS); }
 int main(void) {
         signal(SIGTERM, sigHandler);
         signal(SIGINT, sigHandler);
@@ -100,6 +114,7 @@ static void setup(void) {
         dpy = XOpenDisplay(NULL);
         if (!dpy) die("cannot open display");
         root = DefaultRootWindow(dpy);
+        initDesktops();
         XWindowAttributes attr;
         if (!XGetWindowAttributes(dpy, root, &attr)) die("cannot get root window attributes");
         screen_width  = attr.width;
@@ -177,9 +192,8 @@ static void handleConfigureNotify(XEvent *e) {
         }
 }
 static void killFocusedWindow(void) {
-        Desktop *d = &desktops[currentDesktop];
-        if (d->windowCount <= 0) return;
-        Window win = d->windows[d->focusedIdx];
+        if (P_CURRENT_DESKTOP->windowCount <= 0) return;
+        Window win = P_CURRENT_DESKTOP->windows[P_CURRENT_DESKTOP->focusedIdx];
         if (win == None || win == root) return;
         Atom del        = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
         Atom *protocols = NULL;
@@ -208,14 +222,13 @@ static void killFocusedWindow(void) {
         XFlush(dpy);
 }
 inline static void focusCycleWindow(Bool forward) {
-        Desktop *d      = &desktops[currentDesktop];
-        unsigned char c = d->windowCount;
+        unsigned char c = P_CURRENT_DESKTOP->windowCount;
         if (c <= 1) return;
-        short idx = d->focusedIdx + (forward ? 1 : -1);
+        short idx = P_CURRENT_DESKTOP->focusedIdx + (forward ? 1 : -1);
         idx += c * (idx < 0);
         idx -= c * (idx >= c);
-        d->focusedIdx = idx;
-        focusWindow(d->windows[idx]);
+        P_CURRENT_DESKTOP->focusedIdx = idx;
+        focusWindow(P_CURRENT_DESKTOP->windows[idx]);
 }
 static void handleKeyPress(XEvent *e) {
         XKeyEvent *ev      = &e->xkey;
@@ -276,16 +289,15 @@ static void moveWindowToDesktop(Window win, unsigned char desktop) {
         if (desktop >= MAX_DESKTOPS || desktop == currentDesktop) return;
         Desktop *target = &desktops[desktop];
         if (target->windowCount >= MAX_WINDOWS_PER_DESKTOP) return;
-        Desktop *current = &desktops[currentDesktop];
-        short windowIdx  = -1;
-        for (unsigned char i = 0; i < current->windowCount; i++) {
-                if (current->windows[i] == win) {
+        short windowIdx = -1;
+        for (unsigned char i = 0; i < P_CURRENT_DESKTOP->windowCount; i++) {
+                if (P_CURRENT_DESKTOP->windows[i] == win) {
                         windowIdx = i;
                         break;
                 }
         }
         if (windowIdx == -1) return;
-        removeWindowFromDesktop(win, current);
+        removeWindowFromDesktop(win, P_CURRENT_DESKTOP);
         unsigned char newIdx    = target->windowCount;
         target->windows[newIdx] = win;
         target->windowCount++;
@@ -310,14 +322,16 @@ static void removeWindowFromDesktop(Window win, Desktop *d) {
 static void handleUnmapNotify(XEvent *e) {
         if (IsSwitching) return;
         Window win = e->xunmap.window;
-        Desktop *d = &desktops[currentDesktop];
-        for (unsigned char i = 0; i < d->windowCount; i++) {
-                if (d->windows[i] == win) {
-                        if (i == d->focusedIdx && d->windowCount > 1) {
-                                d->focusedIdx = (i + 1) % d->windowCount;
-                                focusWindow(d->windows[d->focusedIdx]);
+        for (unsigned char i = 0; i < P_CURRENT_DESKTOP->windowCount; i++) {
+                if (P_CURRENT_DESKTOP->windows[i] == win) {
+                        if (i == P_CURRENT_DESKTOP->focusedIdx &&
+                            P_CURRENT_DESKTOP->windowCount > 1) {
+                                P_CURRENT_DESKTOP->focusedIdx =
+                                    (i + 1) % P_CURRENT_DESKTOP->windowCount;
+                                focusWindow(
+                                    P_CURRENT_DESKTOP->windows[P_CURRENT_DESKTOP->focusedIdx]);
                         }
-                        removeWindowFromDesktop(win, d);
+                        removeWindowFromDesktop(win, P_CURRENT_DESKTOP);
                         tileWindows();
                         return;
                 }
@@ -333,6 +347,7 @@ static void handleDestroyNotify(XEvent *e) {
         }
 }
 static void cleanup(void) {
+        cleanupDesktops();
         for (unsigned char d = 0; d < MAX_DESKTOPS; d++) {
                 for (unsigned char i = 0; i < desktops[d].windowCount; i++) {
                         XUnmapWindow(dpy, desktops[d].windows[i]);
@@ -341,11 +356,11 @@ static void cleanup(void) {
         XCloseDisplay(dpy);
 }
 static void tileWindows(void) {
-        Desktop *d = &desktops[currentDesktop];
-        if (d->windowCount == 0) return;
-        if (d->windowCount == 1) {
-                XMoveResizeWindow(dpy, d->windows[0], 0, 0, screen_width, screen_height);
-                XRaiseWindow(dpy, d->windows[0]);
+        if (P_CURRENT_DESKTOP->windowCount == 0) return;
+        if (P_CURRENT_DESKTOP->windowCount == 1) {
+                XMoveResizeWindow(dpy, P_CURRENT_DESKTOP->windows[0], 0, 0, screen_width,
+                                  screen_height);
+                XRaiseWindow(dpy, P_CURRENT_DESKTOP->windows[0]);
                 return;
         }
         unsigned short masterWidth = (screen_width + (resizeDelta << 1)) >> 1;
@@ -353,21 +368,20 @@ static void tileWindows(void) {
                                      : (masterWidth > screen_width - 100) ? screen_width - 100
                                                                           : masterWidth;
         unsigned short stackWidth  = screen_width - masterWidth;
-        unsigned short stackHeight = screen_height / (d->windowCount - 1);
-        XMoveResizeWindow(dpy, d->windows[0], 0, 0, masterWidth, screen_height);
-        for (unsigned char i = 1; i < d->windowCount; i++) {
-                XMoveResizeWindow(dpy, d->windows[i], masterWidth, (i - 1) * stackHeight,
-                                  stackWidth, stackHeight);
+        unsigned short stackHeight = screen_height / (P_CURRENT_DESKTOP->windowCount - 1);
+        XMoveResizeWindow(dpy, P_CURRENT_DESKTOP->windows[0], 0, 0, masterWidth, screen_height);
+        for (unsigned char i = 1; i < P_CURRENT_DESKTOP->windowCount; i++) {
+                XMoveResizeWindow(dpy, P_CURRENT_DESKTOP->windows[i], masterWidth,
+                                  (i - 1) * stackHeight, stackWidth, stackHeight);
         }
-        XRaiseWindow(dpy, d->windows[d->focusedIdx]);
+        XRaiseWindow(dpy, P_CURRENT_DESKTOP->windows[P_CURRENT_DESKTOP->focusedIdx]);
 }
 static void mapWindowToDesktop(Window win) {
-        Desktop *d = &desktops[currentDesktop];
-        if (d->windowCount < MAX_WINDOWS_PER_DESKTOP) {
-                unsigned char idx = d->windowCount;
-                d->windows[idx]   = win;
-                d->windowCount++;
-                d->focusedIdx = idx;
+        if (P_CURRENT_DESKTOP->windowCount < MAX_WINDOWS_PER_DESKTOP) {
+                unsigned char idx               = P_CURRENT_DESKTOP->windowCount;
+                P_CURRENT_DESKTOP->windows[idx] = win;
+                P_CURRENT_DESKTOP->windowCount++;
+                P_CURRENT_DESKTOP->focusedIdx = idx;
                 XMapWindow(dpy, win);
                 focusWindow(win);
                 tileWindows();
@@ -382,9 +396,8 @@ static void handleMapRequest(XEvent *e) {
 }
 static void handleMapNotify(XEvent *e) {
         XMapEvent *ev = &e->xmap;
-        Desktop *d    = &desktops[currentDesktop];
-        for (unsigned char i = 0; i < d->windowCount; i++) {
-                if (d->windows[i] == ev->window) {
+        for (unsigned char i = 0; i < P_CURRENT_DESKTOP->windowCount; i++) {
+                if (P_CURRENT_DESKTOP->windows[i] == ev->window) {
                         tileWindows();
                         break;
                 }
@@ -393,19 +406,17 @@ static void handleMapNotify(XEvent *e) {
 static void switchDesktop(unsigned char desktop) {
         if (desktop == currentDesktop || desktop >= MAX_DESKTOPS) return;
         if (IsSwitching) return;
-        IsSwitching      = 1;
-        Desktop *current = &desktops[currentDesktop];
-        for (unsigned char i = 0; i < current->windowCount; i++) {
-                XUnmapWindow(dpy, current->windows[i]);
+        IsSwitching = 1;
+        for (unsigned char i = 0; i < P_CURRENT_DESKTOP->windowCount; i++) {
+                XUnmapWindow(dpy, P_CURRENT_DESKTOP->windows[i]);
         }
-        currentDesktop  = desktop;
-        Desktop *target = &desktops[currentDesktop];
-        for (unsigned char i = 0; i < target->windowCount; i++) {
-                XMapWindow(dpy, target->windows[i]);
+        currentDesktop = desktop;
+        for (unsigned char i = 0; i < P_CURRENT_DESKTOP->windowCount; i++) {
+                XMapWindow(dpy, P_CURRENT_DESKTOP->windows[i]);
         }
         tileWindows();
-        if (target->windowCount > 0) {
-                focusWindow(target->windows[target->focusedIdx]);
+        if (P_CURRENT_DESKTOP->windowCount > 0) {
+                focusWindow(P_CURRENT_DESKTOP->windows[P_CURRENT_DESKTOP->focusedIdx]);
         }
         IsSwitching = 0;
 }
