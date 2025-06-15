@@ -5,7 +5,6 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <sys/select.h>
@@ -68,7 +67,7 @@ static int xerror(Display *, XErrorEvent *);
 static void killFocusedWindow(void);
 inline static void focusCycleWindow(_Bool);// 1 bit
 static void removeWindowFromDesktop(Window win, Desktop *d);
-inline static void die(const char *msg);
+inline static void die(void);
 inline static void initDesktops(void);
 inline static void cleanupDesktops(void);
 int main(void) {
@@ -82,18 +81,18 @@ inline static void initDesktops(void) {
         desktops = mmap(NULL, sizeof(Desktop) * MAX_DESKTOPS, PROT_READ | PROT_WRITE,
                         MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
         if (desktops == MAP_FAILED) {
-                printf("mmap");
+                __attribute__((unused))
+                ssize_t _ = write(2, "mwm:error mmap\n", 14);
                 _exit(1);
         }
 }
 static inline void cleanupDesktops() { munmap(desktops, sizeof(Desktop) * MAX_DESKTOPS); }
-inline static void die(const char *msg) {
-        fprintf(stderr, "mwm: %s\n", msg);
-        // Can't use write() here because it requires the message length,
-        // which would force us to include string.h for strlen().
-        // Also, we can't set a fixed buffer size since messages vary in length.
-        _exit(EXIT_FAILURE);
+inline static void die(void) {
+        __attribute__((unused))
+        ssize_t _ = write(2, "mwm:error\n", 10);    
+        _exit(1);
 }
+    
 static void sigHandler(Bool sig) {
         (void)sig;
         running = 0;
@@ -102,7 +101,7 @@ static int xerror(Display *dpy, XErrorEvent *ee) {
         static Bool startup = True;
         if (startup) {
                 startup = False;
-                die("another window manager is already running");
+                die();
                 return -1;
         }
         (void)dpy;
@@ -110,20 +109,20 @@ static int xerror(Display *dpy, XErrorEvent *ee) {
         return 0;
 }
 static void setup(void) {
-        if (!getenv("DISPLAY")) die("DISPLAY not set");
+        if (!getenv("DISPLAY")) die();
         dpy = XOpenDisplay(NULL);
-        if (!dpy) die("cannot open display");
+        if (!dpy) die();
         root = DefaultRootWindow(dpy);
         initDesktops();
         XWindowAttributes attr;
-        if (!XGetWindowAttributes(dpy, root, &attr)) die("cannot get root window attributes");
+        if (!XGetWindowAttributes(dpy, root, &attr)) die();
         screen_width  = attr.width;
         screen_height = attr.height;
         XSetErrorHandler(xerror);
         XSelectInput(dpy, root,
                      SubstructureRedirectMask | SubstructureNotifyMask | StructureNotifyMask);
         Cursor cursor = XCreateFontCursor(dpy, 68);
-        if (cursor == None) die("failed to create cursor");
+        if (cursor == None) die();
         XDefineCursor(dpy, root, cursor);
         XSetErrorHandler(xerror);
         grabKeys();

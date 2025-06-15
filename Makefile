@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -pedantic -O3 -fno-asynchronous-unwind-tables -fno-unwind-tables -march=native -flto -ffast-math -fomit-frame-pointer -ffunction-sections -fdata-sections -Os -DAUDIO_SCRIPT="\"$(shell pwd)/audio.sh\""
-LDFLAGS = -lX11 -lm -lc -Wl,--gc-sections -Wl,--as-needed -Wl,-O1
+LDFLAGS = -lX11 -s -Wl,--gc-sections -Wl,--as-needed -Wl,-O1
 TARGET = mwm
 SRC = main.c
 PREFIX = /usr/local
