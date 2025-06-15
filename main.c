@@ -306,14 +306,24 @@ inline static void adjustFocusAfterRemoval(Desktop *d) {
         }
         focusWindow(d->windows[d->focusedIdx]);
 }
-static void handleDestroyNotify(XEvent *e) {
-        Window win = e->xdestroywindow.window;
-        for (unsigned char d_idx = 0; d_idx < MAX_DESKTOPS; d_idx++) {
-                removeWindowFromDesktop(win, &desktops[d_idx]);
-                if (d_idx == currentDesktop) {
-                        tileWindows();
-                }
+static void handleDestroyNotify(XEvent *e) {//needed double check ifwindow exists because zathura when quit 'q' crashes the mwm.
+    Window win = e->xdestroywindow.window;
+    for (unsigned char d_idx = 0; d_idx < MAX_DESKTOPS; d_idx++) {
+        Desktop *d = &desktops[d_idx];
+        short windowIdx = -1;
+        for (unsigned char i = 0; i < d->windowCount; i++) {
+            if (d->windows[i] == win) {
+                windowIdx = i;
+                break;
+            }
         }
+        if (windowIdx != -1) {
+            removeWindowFromDesktop(win, d);
+            if (d_idx == currentDesktop) {
+                tileWindows();
+            }
+        }
+    }
 }
 static void cleanup(void) {
         cleanupDesktops();
