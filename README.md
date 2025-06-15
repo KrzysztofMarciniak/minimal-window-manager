@@ -17,21 +17,21 @@ It was designed with the following guiding principles:
 ~/minimal-window-manager $ bloaty mwm 
     FILE SIZE        VM SIZE    
  --------------  -------------- 
-  44.9%  9.93Ki   0.0%       0    [Unmapped]
-  14.4%  3.19Ki  30.8%  3.12Ki    .text
-   5.0%  1.12Ki  10.4%  1.05Ki    .dynsym
-   4.4%    1000   9.0%     936    .rela.plt
-   4.0%     900   2.4%     250    [14 Others]
-   3.5%     800   7.7%     800    [LOAD #2 [R]]
+  45.2%  10.0Ki   0.0%       0    [Unmapped]
+  14.0%  3.11Ki  30.3%  3.05Ki    .text
+   5.0%  1.12Ki  10.5%  1.05Ki    .dynsym
+   4.4%    1000   9.1%     936    .rela.plt
+   4.0%     899   2.4%     249    [14 Others]
+   3.5%     800   7.8%     800    [LOAD #2 [R]]
    3.1%     704   6.2%     640    .plt
-   3.0%     688   6.0%     624    .plt.sec
-   3.0%     678   5.9%     614    .dynstr
-   2.5%     576   4.9%     512    .dynamic
+   3.0%     688   6.1%     624    .plt.sec
+   3.0%     678   6.0%     614    .dynstr
+   2.5%     576   5.0%     512    .dynamic
    2.2%     488   4.1%     424    .rodata
-   1.9%     440   3.6%     376    .got
+   1.9%     440   3.7%     376    .got
    1.9%     424   3.5%     360    .rela.dyn
    1.4%     324   0.0%       0    .shstrtab
-   1.0%     224   1.5%     160    .eh_frame
+   1.0%     224   1.6%     160    .eh_frame
    0.7%     160   0.9%      96    .data.rel.ro
    0.7%     154   0.9%      90    .gnu.version
    0.6%     144   0.8%      80    .gnu.version_r
@@ -41,15 +41,15 @@ It was designed with the following guiding principles:
  100.0%  22.1Ki 100.0%  10.1Ki    TOTAL
 ~/minimal-window-manager $ size mwm 
    text    data     bss     dec     hex filename
-   8491    1024      40    9555    2553 mwm
+   8412    1024      40    9476    2504 mwm
 ~/minimal-window-manager $ ldd mwm 
-        linux-vdso.so.1 (0x00007fff60af7000)
-        libX11.so.6 => /usr/lib64/libX11.so.6 (0x00007f80938f0000)
-        libc.so.6 => /usr/lib64/libc.so.6 (0x00007f8093704000)
-        libxcb.so.1 => /usr/lib64/libxcb.so.1 (0x00007f80936d7000)
-        /lib64/ld-linux-x86-64.so.2 (0x00007f8093a6d000)
-        libXau.so.6 => /usr/lib64/libXau.so.6 (0x00007f80936d1000)
-        libXdmcp.so.6 => /usr/lib64/libXdmcp.so.6 (0x00007f80936c9000)
+        linux-vdso.so.1 (0x00007ffe73351000)
+        libX11.so.6 => /usr/lib64/libX11.so.6 (0x00007f18e8049000)
+        libc.so.6 => /usr/lib64/libc.so.6 (0x00007f18e7e5d000)
+        libxcb.so.1 => /usr/lib64/libxcb.so.1 (0x00007f18e7e30000)
+        /lib64/ld-linux-x86-64.so.2 (0x00007f18e81c6000)
+        libXau.so.6 => /usr/lib64/libXau.so.6 (0x00007f18e7e2a000)
+        libXdmcp.so.6 => /usr/lib64/libXdmcp.so.6 (0x00007f18e7e22000)
 ```
 
 ## Getting Started
