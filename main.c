@@ -15,12 +15,14 @@
 #define P_CURRENT_DESKTOP (&desktops[currentDesktop])
 #define P_DESKTOPS (&desktops[MAX_DESKTOPS])
 #define MOD_KEY Mod4Mask
-#define ARRAY_LEN(arr) (sizeof(arr) / sizeof((arr)[0]))
+#ifndef AUDIO_SCRIPT
+#define AUDIO_SCRIPT ""
+#endif
 typedef struct {
         KeySym keysym;
         const char *command;
 } AppLauncher;
-static const AppLauncher launchers[] = {{XK_Return, "st"},
+static AppLauncher launchers[6] = {{XK_Return, "st"},
                                         {XK_p,
                                          "dmenu_run -m '0' -nb '#000000' -nf '#ffffff' -sb "
                                          "'#ffffff' -sf '#000000'"},
@@ -34,6 +36,8 @@ typedef struct {// if we use 4 : bits on each, it will rise 0.2Ki
         unsigned char focusedIdx;
 } Desktop;
 static Display *dpy;
+
+#define ARRAY_LEN(arr) (sizeof(arr) / sizeof((arr)[0]))
 static _Bool IsSwitching = False;
 static Desktop *desktops = NULL;
 static Window root;
@@ -81,7 +85,7 @@ inline static void initDesktops(void) {
         desktops = mmap(NULL, sizeof(Desktop) * MAX_DESKTOPS, PROT_READ | PROT_WRITE,
                         MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
         if (desktops == MAP_FAILED) {
-                __attribute__((unused))
+                __attribute__((unused)) 
                 ssize_t _ = write(2, "mwm:error mmap\n", 14);
                 _exit(1);
         }
@@ -92,7 +96,6 @@ inline static void die(void) {
         ssize_t _ = write(2, "mwm:error\n", 10);    
         _exit(1);
 }
-    
 static void sigHandler(Bool sig) {
         (void)sig;
         running = 0;
@@ -252,7 +255,7 @@ static void handleKeyPress(XEvent *e) {
                 }
                 return;
         }
-        const unsigned int launcherCount = sizeof(launchers) / sizeof(launchers[0]);
+        const size_t launcherCount = sizeof(launchers) / sizeof(launchers[0]);
         for (unsigned int i = 0; i < launcherCount; i++) {
                 if (keysym == launchers[i].keysym && state == MOD_KEY) {
                         if (fork() == 0) {
