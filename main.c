@@ -346,6 +346,16 @@ static void tileWindows(void) {
         XRaiseWindow(dpy, P_CURRENT_DESKTOP->windows[P_CURRENT_DESKTOP->focusedIdx]);
 }
 static void mapWindowToDesktop(Window win) {
+        // check if is already assinged is important, because when vscodium has a additional window (ex. 'save file') it crashes the whole wm when closed on the same desktop the additional window
+        for (unsigned char i = 0; i < P_CURRENT_DESKTOP->windowCount; i++) {
+                if (P_CURRENT_DESKTOP->windows[i] == win) {
+                        P_CURRENT_DESKTOP->focusedIdx = i;
+                        XMapWindow(dpy, win);
+                        focusWindow(win);
+                        tileWindows();
+                        return;
+                }
+        }
         if (P_CURRENT_DESKTOP->windowCount < MAX_WINDOWS_PER_DESKTOP) {
                 unsigned char idx               = P_CURRENT_DESKTOP->windowCount;
                 P_CURRENT_DESKTOP->windows[idx] = win;
