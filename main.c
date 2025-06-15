@@ -3,7 +3,6 @@
 #include <X11/Xlib.h>
 #include <X11/keysym.h>
 #include <errno.h>
-#include <fcntl.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <sys/mman.h>
@@ -259,20 +258,13 @@ static void handleKeyPress(XEvent *e) {
         for (unsigned int i = 0; i < launcherCount; i++) {
                 if (keysym == launchers[i].keysym && state == MOD_KEY) {
                         if (fork() == 0) {
-                                setsid();
-                                close(0);
-                                close(1);
-                                close(2);
-                                int devnull = open("/dev/null", O_RDWR);
-                                if (devnull >= 0) {
-                                        dup2(devnull, STDIN_FILENO);
-                                        dup2(devnull, STDOUT_FILENO);
-                                        dup2(devnull, STDERR_FILENO);
-                                        if (devnull > 2) close(devnull);
-                                }
+                                setsid();                     // detach from controlling TTY
+                                for (int fd = 0; fd <= 2; fd++)
+                                    close(fd);                // close stdin, stdout, stderr
                                 execl("/bin/sh", "sh", "-c", launchers[i].command, NULL);
                                 _exit(EXIT_FAILURE);
-                        }
+                            }
+                            
                         return;
                 }
         }
