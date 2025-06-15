@@ -82,8 +82,8 @@ inline static void initDesktops(void) {
         desktops = mmap(NULL, sizeof(Desktop) * MAX_DESKTOPS, PROT_READ | PROT_WRITE,
                         MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
         if (desktops == MAP_FAILED) {
-                perror("mmap");
-                exit(1);
+                printf("mmap");
+                _exit(1);
         }
 }
 static inline void cleanupDesktops() { munmap(desktops, sizeof(Desktop) * MAX_DESKTOPS); }
@@ -92,7 +92,7 @@ inline static void die(const char *msg) {
         // Can't use write() here because it requires the message length,
         // which would force us to include string.h for strlen().
         // Also, we can't set a fixed buffer size since messages vary in length.
-        exit(EXIT_FAILURE);
+        _exit(EXIT_FAILURE);
 }
 static void sigHandler(Bool sig) {
         (void)sig;

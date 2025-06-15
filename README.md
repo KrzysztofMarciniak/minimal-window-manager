@@ -94,35 +94,35 @@ exec dbus-launch --sh-syntax --exit-with-session mwm.upx
 #### uncompressed:
 * size:
 ```
-   text	   data	    bss	    dec	    hex	filename
-   9561	   1044	    568	  11173	   2ba5	mwm
+   text    data     bss     dec     hex filename
+   9111    1072      40   10223    27ef mwm
 ```
 * bloaty:
 ```
     FILE SIZE        VM SIZE    
  --------------  -------------- 
-  35.2%  8.85Ki   0.0%       0    [Unmapped]
-  13.8%  3.48Ki  29.1%  3.42Ki    .text
-   7.6%  1.91Ki   0.0%       0    .symtab
-   5.2%  1.31Ki   3.4%     411    [16 Others]
-   4.7%  1.19Ki   9.6%  1.12Ki    .dynsym
-   4.4%  1.10Ki   0.0%       0    .strtab
-   4.1%  1.02Ki   8.2%     984    .rela.plt
-   3.1%     801   6.7%     801    [LOAD #2 [R]]
-   2.9%     736   5.6%     672    .plt
-   2.8%     720   5.5%     656    .plt.sec
-   2.8%     711   5.4%     647    .dynstr
-   2.5%     640   4.8%     576    .eh_frame
-   2.2%     576   4.3%     512    .dynamic
-   0.0%       0   4.7%     568    .bss
-   2.0%     504   3.7%     440    .rodata
-   1.8%     464   3.3%     400    .got
-   1.7%     448   3.2%     384    .rela.dyn
+  36.6%  9.27Ki   0.0%       0    [Unmapped]
+  13.3%  3.36Ki  30.6%  3.30Ki    .text
+   7.8%  1.98Ki   0.0%       0    .symtab
+   4.8%  1.21Ki  10.6%  1.15Ki    .dynsym
+   4.7%  1.18Ki   0.0%       0    .strtab
+   4.5%  1.13Ki   2.8%     314    [15 Others]
+   4.1%  1.05Ki   9.1%    1008    .rela.plt
+   3.1%     804   7.3%     804    [LOAD #2 [R]]
+   2.9%     752   6.2%     688    .plt
+   2.8%     738   6.1%     674    .dynstr
+   2.8%     736   6.1%     672    .plt.sec
+   2.3%     592   4.8%     528    .dynamic
+   2.1%     556   4.4%     492    .rodata
+   1.8%     472   3.7%     408    .got
+   1.7%     448   3.5%     384    .rela.dyn
    1.3%     340   0.0%       0    .shstrtab
-   0.7%     188   1.0%     124    .eh_frame_hdr
-   0.6%     160   0.8%      96    .data.rel.ro
-   0.6%     160   0.8%      96    .gnu.version
- 100.0%  25.2Ki 100.0%  11.7Ki    TOTAL
+   0.9%     224   1.4%     160    .eh_frame
+   0.6%     162   0.9%      98    .gnu.version
+   0.6%     160   0.9%      96    .data.rel.ro
+   0.6%     160   0.9%      96    .gnu.version_r
+   0.6%     144   0.7%      80    .note.gnu.property
+ 100.0%  25.3Ki 100.0%  10.8Ki    TOTAL
 ```
 #### compressed:
 * size (broke):
