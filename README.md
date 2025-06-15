@@ -42,6 +42,14 @@ It was designed with the following guiding principles:
 ~/minimal-window-manager $ size mwm 
    text    data     bss     dec     hex filename
    8491    1024      40    9555    2553 mwm
+~/minimal-window-manager $ ldd mwm 
+        linux-vdso.so.1 (0x00007fff60af7000)
+        libX11.so.6 => /usr/lib64/libX11.so.6 (0x00007f80938f0000)
+        libc.so.6 => /usr/lib64/libc.so.6 (0x00007f8093704000)
+        libxcb.so.1 => /usr/lib64/libxcb.so.1 (0x00007f80936d7000)
+        /lib64/ld-linux-x86-64.so.2 (0x00007f8093a6d000)
+        libXau.so.6 => /usr/lib64/libXau.so.6 (0x00007f80936d1000)
+        libXdmcp.so.6 => /usr/lib64/libXdmcp.so.6 (0x00007f80936c9000)
 ```
 
 ## Getting Started
