@@ -22,13 +22,13 @@ typedef struct {
         const char *command;
 } AppLauncher;
 static AppLauncher launchers[6] = {{XK_Return, "st"},
-                                        {XK_p,
-                                         "dmenu_run -m '0' -nb '#000000' -nf '#ffffff' -sb "
-                                         "'#ffffff' -sf '#000000'"},
-                                        {XF86XK_AudioRaiseVolume, AUDIO_SCRIPT " +"},
-                                        {XF86XK_AudioLowerVolume, AUDIO_SCRIPT " -"},
-                                        {XF86XK_AudioMicMute, AUDIO_SCRIPT " mic"},
-                                        {XF86XK_AudioMute, AUDIO_SCRIPT " aud"}};
+                                   {XK_p,
+                                    "dmenu_run -m '0' -nb '#000000' -nf '#ffffff' -sb "
+                                    "'#ffffff' -sf '#000000'"},
+                                   {XF86XK_AudioRaiseVolume, AUDIO_SCRIPT " +"},
+                                   {XF86XK_AudioLowerVolume, AUDIO_SCRIPT " -"},
+                                   {XF86XK_AudioMicMute, AUDIO_SCRIPT " mic"},
+                                   {XF86XK_AudioMute, AUDIO_SCRIPT " aud"}};
 typedef struct {// if we use 4 : bits on each, it will rise 0.2Ki
         Window windows[MAX_WINDOWS_PER_DESKTOP];
         unsigned char windowCount;
@@ -54,7 +54,6 @@ static void run(void);
 static void cleanup(void);
 static void handleKeyPress(XEvent *e);
 static void handleMapRequest(XEvent *e);
-static void handleUnmapNotify(XEvent *e);
 static void handleDestroyNotify(XEvent *e);
 static void handleConfigureNotify(XEvent *e);
 static void handleMapNotify(XEvent *e);
@@ -72,6 +71,7 @@ static void removeWindowFromDesktop(Window win, Desktop *d);
 inline static void die(void);
 inline static void initDesktops(void);
 inline static void cleanupDesktops(void);
+inline static void adjustFocusAfterRemoval(Desktop *d);
 int main(void) {
         signal(SIGTERM, sigHandler);
         signal(SIGINT, sigHandler);
@@ -83,15 +83,13 @@ inline static void initDesktops(void) {
         desktops = mmap(NULL, sizeof(Desktop) * MAX_DESKTOPS, PROT_READ | PROT_WRITE,
                         MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
         if (desktops == MAP_FAILED) {
-                __attribute__((unused)) 
-                ssize_t _ = write(2, "mwm:error mmap\n", 14);
+                __attribute__((unused)) ssize_t _ = write(2, "mwm:error mmap\n", 14);
                 _exit(1);
         }
 }
 static inline void cleanupDesktops() { munmap(desktops, sizeof(Desktop) * MAX_DESKTOPS); }
 inline static void die(void) {
-        __attribute__((unused))
-        ssize_t _ = write(2, "mwm:error\n", 10);    
+        __attribute__((unused)) ssize_t _ = write(2, "mwm:error\n", 10);
         _exit(1);
 }
 static void sigHandler(Bool sig) {
@@ -164,9 +162,11 @@ static void run(void) {
                                 handleMapRequest(&e);
                         else if (e.type == MapNotify)
                                 handleMapNotify(&e);
-                        else if (e.type == UnmapNotify)
-                                handleUnmapNotify(&e);
-                        else if (e.type == DestroyNotify)
+                        else if (e.type == UnmapNotify) {
+                                if (IsSwitching) return;
+                                removeWindowFromDesktop(e.xunmap.window, P_CURRENT_DESKTOP);
+                                tileWindows();
+                        } else if (e.type == DestroyNotify)
                                 handleDestroyNotify(&e);
                         else if (e.type == ConfigureNotify)
                                 handleConfigureNotify(&e);
@@ -256,12 +256,11 @@ static void handleKeyPress(XEvent *e) {
         for (unsigned int i = 0; i < ARRAY_LEN(launchers); i++) {
                 if (keysym == launchers[i].keysym && state == MOD_KEY) {
                         if (fork() == 0) {
-                                setsid();                    
-                                for (int fd = 0; fd <= 2; fd++)
-                                    close(fd);               
+                                setsid();
+                                for (int fd = 0; fd <= 2; fd++) close(fd);
                                 execl("/bin/sh", "sh", "-c", launchers[i].command, NULL);
                                 _exit(EXIT_FAILURE);
-                            }
+                        }
                         return;
                 }
         }
@@ -293,30 +292,19 @@ static void removeWindowFromDesktop(Window win, Desktop *d) {
                                 d->windows[j] = d->windows[j + 1];
                         }
                         d->windowCount--;
-                        if (d->focusedIdx >= d->windowCount && d->windowCount > 0) {
-                                d->focusedIdx = d->windowCount - 1;
-                        }
+                        adjustFocusAfterRemoval(d);
                         break;
                 }
         }
 }
-static void handleUnmapNotify(XEvent *e) {
-        if (IsSwitching) return;
-        Window win = e->xunmap.window;
-        for (unsigned char i = 0; i < P_CURRENT_DESKTOP->windowCount; i++) {
-                if (P_CURRENT_DESKTOP->windows[i] == win) {
-                        if (i == P_CURRENT_DESKTOP->focusedIdx &&
-                            P_CURRENT_DESKTOP->windowCount > 1) {
-                                P_CURRENT_DESKTOP->focusedIdx =
-                                    (i + 1) % P_CURRENT_DESKTOP->windowCount;
-                                focusWindow(
-                                    P_CURRENT_DESKTOP->windows[P_CURRENT_DESKTOP->focusedIdx]);
-                        }
-                        removeWindowFromDesktop(win, P_CURRENT_DESKTOP);
-                        tileWindows();
-                        return;
-                }
+inline static void adjustFocusAfterRemoval(Desktop *d) {
+        if (d->windowCount == 0) {
+                return;
         }
+        if (d->focusedIdx >= d->windowCount) {
+                d->focusedIdx = d->windowCount - 1;
+        }
+        focusWindow(d->windows[d->focusedIdx]);
 }
 static void handleDestroyNotify(XEvent *e) {
         Window win = e->xdestroywindow.window;
