@@ -35,7 +35,6 @@ typedef struct {// if we use 4 : bits on each, it will rise 0.2Ki
         unsigned char focusedIdx;
 } Desktop;
 static Display *dpy;
-
 #define ARRAY_LEN(arr) (sizeof(arr) / sizeof((arr)[0]))
 static _Bool IsSwitching = False;
 static Desktop *desktops = NULL;
@@ -100,7 +99,7 @@ static void sigHandler(Bool sig) {
         running = 0;
 }
 static int xerror(Display *dpy, XErrorEvent *ee) {
-        static Bool startup = True;
+        static _Bool startup = True;
         if (startup) {
                 startup = False;
                 die();
@@ -143,7 +142,7 @@ static void grabKeys(void) {
         for (unsigned char i = 0; i < MAX_DESKTOPS; ++i) {
                 grabKey(XK_1 + i, MOD_KEY, True);
         }
-        KeySym wmKeys[] = {XK_q, XK_j, XK_k, XK_h, XK_l};
+        static const KeySym wmKeys[] = {XK_q, XK_j, XK_k, XK_h, XK_l};
         for (unsigned char i = 0; i < ARRAY_LEN(wmKeys); ++i) {
                 grabKey(wmKeys[i], MOD_KEY, True);
         }
@@ -254,17 +253,15 @@ static void handleKeyPress(XEvent *e) {
                 }
                 return;
         }
-        const size_t launcherCount = sizeof(launchers) / sizeof(launchers[0]);
-        for (unsigned int i = 0; i < launcherCount; i++) {
+        for (unsigned int i = 0; i < ARRAY_LEN(launchers); i++) {
                 if (keysym == launchers[i].keysym && state == MOD_KEY) {
                         if (fork() == 0) {
-                                setsid();                     // detach from controlling TTY
+                                setsid();                    
                                 for (int fd = 0; fd <= 2; fd++)
-                                    close(fd);                // close stdin, stdout, stderr
+                                    close(fd);               
                                 execl("/bin/sh", "sh", "-c", launchers[i].command, NULL);
                                 _exit(EXIT_FAILURE);
                             }
-                            
                         return;
                 }
         }
