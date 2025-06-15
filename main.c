@@ -11,8 +11,8 @@
 #include <sys/select.h>
 #include <unistd.h>
 #define RESIZE_STEP 50
-#define MAX_DESKTOPS 9           // 256 limit
-#define MAX_WINDOWS_PER_DESKTOP 6// 256 limit
+#define MAX_DESKTOPS 9            // 256 limit
+#define MAX_WINDOWS_PER_DESKTOP 12// 256 limit
 #define P_CURRENT_DESKTOP (&desktops[currentDesktop])
 #define P_DESKTOPS (&desktops[MAX_DESKTOPS])
 #define MOD_KEY Mod4Mask
@@ -35,7 +35,7 @@ typedef struct {// if we use 4 : bits on each, it will rise 0.2Ki
         unsigned char focusedIdx;
 } Desktop;
 static Display *dpy;
-static Bool IsSwitching  = False;
+static _Bool IsSwitching = False;
 static Desktop *desktops = NULL;
 static Window root;
 static unsigned char currentDesktop  = 0;
@@ -56,30 +56,21 @@ static void handleMapRequest(XEvent *e);
 static void handleUnmapNotify(XEvent *e);
 static void handleDestroyNotify(XEvent *e);
 static void handleConfigureNotify(XEvent *e);
+static void handleMapNotify(XEvent *e);
 inline static void focusWindow(Window w);
 static void tileWindows(void);
 static void switchDesktop(unsigned char desktop);
 static void moveWindowToDesktop(Window win, unsigned char desktop);
 static void grabKeys(void);
-static void sigHandler(Bool);
+static void sigHandler(Bool);// Bool = int, provided by x11
 // Must return int because XSetErrorHandler requires this signature
 static int xerror(Display *, XErrorEvent *);
 static void killFocusedWindow(void);
-inline static void focusCycleWindow(Bool);
-static void handleMapNotify(XEvent *e);
+inline static void focusCycleWindow(_Bool);// 1 bit
 static void removeWindowFromDesktop(Window win, Desktop *d);
 inline static void die(const char *msg);
 inline static void initDesktops(void);
 inline static void cleanupDesktops(void);
-inline static void initDesktops(void) {
-        size_t size = sizeof(Desktop) * MAX_DESKTOPS;
-        desktops    = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
-        if (desktops == MAP_FAILED) {
-                perror("mmap");
-                exit(1);
-        }
-}
-static inline void cleanupDesktops() { munmap(desktops, sizeof(Desktop) * MAX_DESKTOPS); }
 int main(void) {
         signal(SIGTERM, sigHandler);
         signal(SIGINT, sigHandler);
@@ -87,6 +78,15 @@ int main(void) {
         run();
         cleanup();
 }
+inline static void initDesktops(void) {
+        desktops = mmap(NULL, sizeof(Desktop) * MAX_DESKTOPS, PROT_READ | PROT_WRITE,
+                        MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+        if (desktops == MAP_FAILED) {
+                perror("mmap");
+                exit(1);
+        }
+}
+static inline void cleanupDesktops() { munmap(desktops, sizeof(Desktop) * MAX_DESKTOPS); }
 inline static void die(const char *msg) {
         fprintf(stderr, "mwm: %s\n", msg);
         // Can't use write() here because it requires the message length,
@@ -177,12 +177,10 @@ static void run(void) {
         }
 }
 static void handleConfigureNotify(XEvent *e) {
-        XConfigureEvent *ev = &e->xconfigure;
-        if (ev->window == root) {
-                screen_width  = ev->width;
-                screen_height = ev->height;
-                tileWindows();
-        }
+        if (e->xconfigure.window != root) return;
+        screen_width  = e->xconfigure.width;
+        screen_height = e->xconfigure.height;
+        tileWindows();
 }
 static void killFocusedWindow(void) {
         if (P_CURRENT_DESKTOP->windowCount <= 0) return;
@@ -214,12 +212,11 @@ static void killFocusedWindow(void) {
         XKillClient(dpy, win);
         XFlush(dpy);
 }
-inline static void focusCycleWindow(Bool forward) {
-        unsigned char c = P_CURRENT_DESKTOP->windowCount;
-        if (c <= 1) return;
+inline static void focusCycleWindow(_Bool forward) {
+        if (P_CURRENT_DESKTOP->windowCount <= 1) return;
         short idx = P_CURRENT_DESKTOP->focusedIdx + (forward ? 1 : -1);
-        idx += c * (idx < 0);
-        idx -= c * (idx >= c);
+        idx += P_CURRENT_DESKTOP->windowCount * (idx < 0);
+        idx -= P_CURRENT_DESKTOP->windowCount * (idx >= P_CURRENT_DESKTOP->windowCount);
         P_CURRENT_DESKTOP->focusedIdx = idx;
         focusWindow(P_CURRENT_DESKTOP->windows[idx]);
 }
