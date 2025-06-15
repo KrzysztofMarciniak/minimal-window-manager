@@ -306,7 +306,7 @@ inline static void adjustFocusAfterRemoval(Desktop *d) {
         }
         focusWindow(d->windows[d->focusedIdx]);
 }
-static void handleDestroyNotify(XEvent *e) {//needed double check ifwindow exists because zathura when quit 'q' crashes the mwm.
+static void handleDestroyNotify(XEvent *e) {//needed double check ifwindow exists because zathura when quit 'q' crashes the mwm. their code uses gtk to 'hide' (unmap) than destory. 
     Window win = e->xdestroywindow.window;
     for (unsigned char d_idx = 0; d_idx < MAX_DESKTOPS; d_idx++) {
         Desktop *d = &desktops[d_idx];
