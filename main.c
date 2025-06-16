@@ -83,13 +83,13 @@ inline static void initDesktops(void) {
         desktops = mmap(NULL, sizeof(Desktop) * MAX_DESKTOPS, PROT_READ | PROT_WRITE,
                         MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
         if (desktops == MAP_FAILED) {
-                __attribute__((unused)) ssize_t _ = write(2, "mwm:error mmap\n", 14);
+                __attribute__((unused)) char _ = write(2, "mwm:error mmap\n", 14);
                 _exit(1);
         }
 }
 static inline void cleanupDesktops() { munmap(desktops, sizeof(Desktop) * MAX_DESKTOPS); }
 inline static void die(void) {
-        __attribute__((unused)) ssize_t _ = write(2, "mwm:error\n", 10);
+        __attribute__((unused)) char _ = write(2, "mwm:error\n", 10);
         _exit(1);
 }
 static void sigHandler(Bool sig) {
@@ -306,24 +306,26 @@ inline static void adjustFocusAfterRemoval(Desktop *d) {
         }
         focusWindow(d->windows[d->focusedIdx]);
 }
-static void handleDestroyNotify(XEvent *e) {//needed double check ifwindow exists because zathura when quit 'q' crashes the mwm. their code uses gtk to 'hide' (unmap) than destory. 
-    Window win = e->xdestroywindow.window;
-    for (unsigned char d_idx = 0; d_idx < MAX_DESKTOPS; d_idx++) {
-        Desktop *d = &desktops[d_idx];
-        short windowIdx = -1;
-        for (unsigned char i = 0; i < d->windowCount; i++) {
-            if (d->windows[i] == win) {
-                windowIdx = i;
-                break;
-            }
+static void handleDestroyNotify(
+    XEvent *e) {// needed double check ifwindow exists because zathura when quit 'q' crashes the
+                // mwm. their code uses gtk to 'hide' (unmap) than destory.
+        Window win = e->xdestroywindow.window;
+        for (unsigned char d_idx = 0; d_idx < MAX_DESKTOPS; d_idx++) {
+                Desktop *d      = &desktops[d_idx];
+                short windowIdx = -1;
+                for (unsigned char i = 0; i < d->windowCount; i++) {
+                        if (d->windows[i] == win) {
+                                windowIdx = i;
+                                break;
+                        }
+                }
+                if (windowIdx != -1) {
+                        removeWindowFromDesktop(win, d);
+                        if (d_idx == currentDesktop) {
+                                tileWindows();
+                        }
+                }
         }
-        if (windowIdx != -1) {
-            removeWindowFromDesktop(win, d);
-            if (d_idx == currentDesktop) {
-                tileWindows();
-            }
-        }
-    }
 }
 static void cleanup(void) {
         cleanupDesktops();
@@ -356,7 +358,9 @@ static void tileWindows(void) {
         XRaiseWindow(dpy, P_CURRENT_DESKTOP->windows[P_CURRENT_DESKTOP->focusedIdx]);
 }
 static void mapWindowToDesktop(Window win) {
-        // check if is already assinged is important, because when vscodium has a additional window (ex. 'save file') it crashes the whole wm when closed on the same desktop the additional window
+        // check if is already assinged is important, because when vscodium has a additional window
+        // (ex. 'save file') it crashes the whole wm when closed on the same desktop the additional
+        // window
         for (unsigned char i = 0; i < P_CURRENT_DESKTOP->windowCount; i++) {
                 if (P_CURRENT_DESKTOP->windows[i] == win) {
                         P_CURRENT_DESKTOP->focusedIdx = i;
