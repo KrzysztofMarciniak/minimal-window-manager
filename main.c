@@ -395,6 +395,10 @@ static void handleMapNotify(XEvent *e) {
                         break;
                 }
         }
+        if (P_CURRENT_DESKTOP->windowCount < MAX_WINDOWS_PER_DESKTOP) {
+                P_CURRENT_DESKTOP->windows[P_CURRENT_DESKTOP->windowCount++] = ev->window;
+                tileWindows();
+        }
 }
 static void switchDesktop(unsigned char desktop) {
         if (desktop == currentDesktop || desktop >= MAX_DESKTOPS) return;
