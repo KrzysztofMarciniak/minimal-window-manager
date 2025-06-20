@@ -342,7 +342,6 @@ static void tileWindows(void) {
 }
 static void handleMapRequest(XEvent *e) {
     Window win = e->xmaprequest.window;
-
     for (unsigned char i = 0; i < CURRENT_DESKTOP.windowCount; i++) {
         if (CURRENT_DESKTOP.windows[i] == win) {
             CURRENT_DESKTOP.focusedIdx = i;
@@ -352,7 +351,6 @@ static void handleMapRequest(XEvent *e) {
             return;
         }
     }
-
     if (CURRENT_DESKTOP.windowCount < MAX_WINDOWS_PER_DESKTOP) {
         unsigned char idx = CURRENT_DESKTOP.windowCount;
         CURRENT_DESKTOP.windows[idx] = win;
