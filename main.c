@@ -340,32 +340,31 @@ static void tileWindows(void) {
         }
         XRaiseWindow(dpy, CURRENT_DESKTOP.windows[CURRENT_DESKTOP.focusedIdx]);
 }
-static void mapWindowToDesktop(Window win) {
-        for (unsigned char i = 0; i < CURRENT_DESKTOP.windowCount; i++) {
-                if (CURRENT_DESKTOP.windows[i] == win) {
-                        CURRENT_DESKTOP.focusedIdx = i;
-                        XMapWindow(dpy, win);
-                        focusWindow(win);
-                        tileWindows();
-                        return;
-                }
-        }
-        if (CURRENT_DESKTOP.windowCount < MAX_WINDOWS_PER_DESKTOP) {
-                unsigned char idx            = CURRENT_DESKTOP.windowCount;
-                CURRENT_DESKTOP.windows[idx] = win;
-                CURRENT_DESKTOP.windowCount++;
-                CURRENT_DESKTOP.focusedIdx = idx;
-                XMapWindow(dpy, win);
-                focusWindow(win);
-                tileWindows();
-        } else {
-                XKillClient(dpy, win);
-                XFlush(dpy);
-        }
-}
 static void handleMapRequest(XEvent *e) {
-        XMapRequestEvent *ev = &e->xmaprequest;
-        mapWindowToDesktop(ev->window);
+    Window win = e->xmaprequest.window;
+
+    for (unsigned char i = 0; i < CURRENT_DESKTOP.windowCount; i++) {
+        if (CURRENT_DESKTOP.windows[i] == win) {
+            CURRENT_DESKTOP.focusedIdx = i;
+            XMapWindow(dpy, win);
+            focusWindow(win);
+            tileWindows();
+            return;
+        }
+    }
+
+    if (CURRENT_DESKTOP.windowCount < MAX_WINDOWS_PER_DESKTOP) {
+        unsigned char idx = CURRENT_DESKTOP.windowCount;
+        CURRENT_DESKTOP.windows[idx] = win;
+        CURRENT_DESKTOP.windowCount++;
+        CURRENT_DESKTOP.focusedIdx = idx;
+        XMapWindow(dpy, win);
+        focusWindow(win);
+        tileWindows();
+    } else {
+        XKillClient(dpy, win);
+        XFlush(dpy);
+    }
 }
 static void handleMapNotify(XEvent *e) {
         XMapEvent *ev = &e->xmap;
