@@ -140,34 +140,45 @@ static void run(void) {
         fd_set fds;
         int xfd = ConnectionNumber(dpy);
         while (running) {
-                while (XPending(
-                    dpy)) {// switches cost 0.01ki in .text, probably generating jump table.
+                while (XPending(dpy)) {
                         XNextEvent(dpy, &e);
-                        if (e.type == KeyPress)
-                                handleKeyPress(&e);
-                        else if (e.type == MapRequest)
-                                handleMapRequest(&e);
-                        else if (e.type == MapNotify)
-                                handleMapNotify(&e);
-                        else if (e.type == UnmapNotify) {
-                                if (IsSwitching) return;
-                                removeWindowFromDesktop(e.xunmap.window, &CURRENT_DESKTOP);
-                                tileWindows();
-                        } else if (e.type == DestroyNotify)
-                                handleDestroyNotify(&e);
-                        else if (e.type == ConfigureNotify)
-                                handleConfigureNotify(&e);
+                        switch (e.type) {
+                                case KeyPress:
+                                        handleKeyPress(&e);
+                                        break;
+                                case MapRequest:
+                                        handleMapRequest(&e);
+                                        break;
+                                case MapNotify:
+                                        handleMapNotify(&e);
+                                        break;
+                                case UnmapNotify:
+                                        if (IsSwitching) break; 
+                                        removeWindowFromDesktop(e.xunmap.window, &CURRENT_DESKTOP);
+                                        tileWindows();
+                                        break;
+                                case DestroyNotify:
+                                        handleDestroyNotify(&e);
+                                        break;
+                                case ConfigureNotify:
+                                        if (e.xconfigure.window != root) break;
+                                        screen_width  = e.xconfigure.width;
+                                        screen_height = e.xconfigure.height;
+                                        tileWindows();
+                                        break;
+                                default:
+                                        break;
+                        }
                 }
                 FD_ZERO(&fds);
                 FD_SET(xfd, &fds);
-                if (select(xfd + 1, &fds, NULL, NULL, NULL) == -1 && errno != EINTR) break;
-        }
-}
-static void handleConfigureNotify(XEvent *e) {
-        if (e->xconfigure.window != root) return;
-        screen_width  = e->xconfigure.width;
-        screen_height = e->xconfigure.height;
-        tileWindows();
+                if (select(xfd + 1, &fds, NULL, NULL, NULL) == -1) {
+                        if (errno == EINTR)
+                                continue; 
+                        else
+                                break; 
+                }
+        } 
 }
 static void killFocusedWindow(void) {
         Window win = CURRENT_DESKTOP.windows[CURRENT_DESKTOP.focusedIdx];
@@ -252,45 +263,37 @@ static void handleKeyPress(XEvent *e) {
         }
 }
 static void moveWindowToDesktop(Window win, unsigned char desktop) {
-        if (desktop >= MAX_DESKTOPS || desktop == currentDesktop) return;
-        Desktop *target = &desktops[desktop];
-        if (target->windowCount >= MAX_WINDOWS_PER_DESKTOP) return;
-        short windowIdx = -1;
-        for (unsigned char i = 0; i < CURRENT_DESKTOP.windowCount; i++) {
-                if (CURRENT_DESKTOP.windows[i] == win) {
-                        windowIdx = i;
-                        break;
-                }
+    if (desktop >= MAX_DESKTOPS || desktop == currentDesktop) return;
+    Desktop *target = &desktops[desktop];
+    if (target->windowCount >= MAX_WINDOWS_PER_DESKTOP) return;
+    for (unsigned char i = 0; i < CURRENT_DESKTOP.windowCount; i++) {
+        if (CURRENT_DESKTOP.windows[i] == win) {
+            removeWindowFromDesktop(win, &CURRENT_DESKTOP);
+            target->windows[target->windowCount++] = win;
+            XUnmapWindow(dpy, win); 
+            tileWindows();          
+            return;
         }
-        if (windowIdx == -1) return;
-        removeWindowFromDesktop(win, &CURRENT_DESKTOP);
-        unsigned char newIdx    = target->windowCount;
-        target->windows[newIdx] = win;
-        target->windowCount++;
-        XUnmapWindow(dpy, win);
-        tileWindows();
+    }
 }
-inline static void focusWindow(Window w) { XSetInputFocus(dpy, w, RevertToParent, CurrentTime); }
+inline static void focusWindow(Window w) {
+    if (w != None) {
+        XSetInputFocus(dpy, w, RevertToParent, CurrentTime);
+    }
+}
 static void removeWindowFromDesktop(Window win, Desktop *d) {
-        for (unsigned char i = 0; i < d->windowCount; i++) {
-                if (d->windows[i] == win) {
-                        for (unsigned char j = i; j < d->windowCount - 1; j++) {
-                                d->windows[j] = d->windows[j + 1];
-                        }
-                        d->windowCount--;
-                        adjustFocusAfterRemoval(d);
-                        break;
-                }
+    unsigned int write = 0;
+    for (unsigned int read = 0; read < d->windowCount; read++) {
+        if (d->windows[read] != win) {
+            d->windows[write++] = d->windows[read];
         }
-}
-inline static void adjustFocusAfterRemoval(Desktop *d) {
-        if (d->windowCount == 0) {
-                return;
-        }
-        if (d->focusedIdx >= d->windowCount) {
-                d->focusedIdx = d->windowCount - 1;
-        }
-        focusWindow(d->windows[d->focusedIdx]);
+    }
+    d->windowCount = write;
+
+    if (write > 0) {
+        d->focusedIdx = 0;
+        focusWindow(d->windows[0]);
+    }
 }
 static void handleDestroyNotify(XEvent *e) {
         Window win = e->xdestroywindow.window;
@@ -341,28 +344,28 @@ static void tileWindows(void) {
         XRaiseWindow(dpy, CURRENT_DESKTOP.windows[CURRENT_DESKTOP.focusedIdx]);
 }
 static void handleMapRequest(XEvent *e) {
-    Window win = e->xmaprequest.window;
-    for (unsigned char i = 0; i < CURRENT_DESKTOP.windowCount; i++) {
-        if (CURRENT_DESKTOP.windows[i] == win) {
-            CURRENT_DESKTOP.focusedIdx = i;
-            XMapWindow(dpy, win);
-            focusWindow(win);
-            tileWindows();
-            return;
+        Window win = e->xmaprequest.window;
+        for (unsigned char i = 0; i < CURRENT_DESKTOP.windowCount; i++) {
+                if (CURRENT_DESKTOP.windows[i] == win) {
+                        CURRENT_DESKTOP.focusedIdx = i;
+                        XMapWindow(dpy, win);
+                        focusWindow(win);
+                        tileWindows();
+                        return;
+                }
         }
-    }
-    if (CURRENT_DESKTOP.windowCount < MAX_WINDOWS_PER_DESKTOP) {
-        unsigned char idx = CURRENT_DESKTOP.windowCount;
-        CURRENT_DESKTOP.windows[idx] = win;
-        CURRENT_DESKTOP.windowCount++;
-        CURRENT_DESKTOP.focusedIdx = idx;
-        XMapWindow(dpy, win);
-        focusWindow(win);
-        tileWindows();
-    } else {
-        XKillClient(dpy, win);
-        XFlush(dpy);
-    }
+        if (CURRENT_DESKTOP.windowCount < MAX_WINDOWS_PER_DESKTOP) {
+                unsigned char idx            = CURRENT_DESKTOP.windowCount;
+                CURRENT_DESKTOP.windows[idx] = win;
+                CURRENT_DESKTOP.windowCount++;
+                CURRENT_DESKTOP.focusedIdx = idx;
+                XMapWindow(dpy, win);
+                focusWindow(win);
+                tileWindows();
+        } else {
+                XKillClient(dpy, win);
+                XFlush(dpy);
+        }
 }
 static void handleMapNotify(XEvent *e) {
         XMapEvent *ev = &e->xmap;
