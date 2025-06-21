@@ -291,10 +291,8 @@ static void removeWindowFromDesktop(Window win, Desktop *d) {
 }
 static void handleDestroyNotify(XEvent *e) {
     Window win = e->xdestroywindow.window;
-
     for (unsigned char d_idx = 0; d_idx < MAX_DESKTOPS; d_idx++) {
         Desktop *d = &desktops[d_idx];
-
         for (unsigned char i = 0; i < d->windowCount; i++) {
             if (d->windows[i] == win) {
                 removeWindowFromDesktop(win, d);
@@ -314,26 +312,35 @@ static void cleanup(void) {
         }
         XCloseDisplay(dpy);
 }
-static void tileWindows(void) {
-        if (CURRENT_DESKTOP.windowCount == 0) return;
-        if (CURRENT_DESKTOP.windowCount == 1) {
-                XMoveResizeWindow(dpy, CURRENT_DESKTOP.windows[0], 0, 0, screen_width,
-                                  screen_height);
-                XRaiseWindow(dpy, CURRENT_DESKTOP.windows[0]);
-                return;
-        }
-        unsigned short masterWidth = (screen_width + (resizeDelta << 1)) >> 1;
-        masterWidth                = (masterWidth < 100)                  ? 100
-                                     : (masterWidth > screen_width - 100) ? screen_width - 100
-                                                                          : masterWidth;
-        unsigned short stackWidth  = screen_width - masterWidth;
-        unsigned short stackHeight = screen_height / (CURRENT_DESKTOP.windowCount - 1);
-        XMoveResizeWindow(dpy, CURRENT_DESKTOP.windows[0], 0, 0, masterWidth, screen_height);
-        for (unsigned char i = 1; i < CURRENT_DESKTOP.windowCount; i++) {
-                XMoveResizeWindow(dpy, CURRENT_DESKTOP.windows[i], masterWidth,
-                                  (i - 1) * stackHeight, stackWidth, stackHeight);
-        }
-        XRaiseWindow(dpy, CURRENT_DESKTOP.windows[CURRENT_DESKTOP.focusedIdx]);
+static void tileWindows(void){
+    const unsigned int n = CURRENT_DESKTOP.windowCount;
+    if (n == 0)
+        return;
+    if (n == 1) {
+        Window w = CURRENT_DESKTOP.windows[0];
+        XMoveResizeWindow(dpy, w, 0, 0, screen_width, screen_height);
+        XRaiseWindow(dpy, w);
+        return;
+    }
+    int half = screen_width >> 1;
+    int mw   = half + resizeDelta;
+    if (mw < 100)
+        mw = 100;
+    else if (mw > (int)screen_width - 100)
+        mw = screen_width - 100;
+    unsigned int masterWidth = (unsigned int)mw;
+    unsigned int stackWidth  = screen_width - masterWidth;
+    unsigned int stackCount  = n - 1;
+    unsigned int stackHeight = screen_height / stackCount;
+    Window master = CURRENT_DESKTOP.windows[0];
+    XMoveResizeWindow(dpy, master, 0, 0, masterWidth, screen_height);
+    for (unsigned int i = 1; i < n; i++) {
+        Window w = CURRENT_DESKTOP.windows[i];
+        unsigned int y = (i - 1) * stackHeight;
+        XMoveResizeWindow(dpy, w, masterWidth, y, stackWidth, stackHeight);
+    }
+    XRaiseWindow(dpy,
+        CURRENT_DESKTOP.windows[CURRENT_DESKTOP.focusedIdx]);
 }
 static void handleMapRequest(XEvent *e) {
         Window win = e->xmaprequest.window;
@@ -359,7 +366,6 @@ static void handleMapRequest(XEvent *e) {
                 XFlush(dpy);
         }
 }
-
 static void switchDesktop(unsigned char desktop) {
         if (desktop == currentDesktop || desktop >= MAX_DESKTOPS) return;
         if (IsSwitching) return;
