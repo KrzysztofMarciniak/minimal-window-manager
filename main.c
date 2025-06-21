@@ -54,8 +54,6 @@ static void cleanup(void);
 static void handleKeyPress(XEvent *e);
 static void handleMapRequest(XEvent *e);
 static void handleDestroyNotify(XEvent *e);
-static void handleConfigureNotify(XEvent *e);
-static void handleMapNotify(XEvent *e);
 inline static void focusWindow(Window w);
 static void tileWindows(void);
 static void switchDesktop(unsigned char desktop);
@@ -68,7 +66,6 @@ static void killFocusedWindow(void);
 inline static void focusCycleWindow(_Bool);// 1 bit
 static void removeWindowFromDesktop(Window win, Desktop *d);
 inline static void die(void);
-inline static void adjustFocusAfterRemoval(Desktop *d);
 int main(void) {
         signal(SIGTERM, sigHandler);
         signal(SIGINT, sigHandler);
@@ -148,9 +145,6 @@ static void run(void) {
                                         break;
                                 case MapRequest:
                                         handleMapRequest(&e);
-                                        break;
-                                case MapNotify:
-                                        handleMapNotify(&e);
                                         break;
                                 case UnmapNotify:
                                         if (IsSwitching) break; 
@@ -296,23 +290,21 @@ static void removeWindowFromDesktop(Window win, Desktop *d) {
     }
 }
 static void handleDestroyNotify(XEvent *e) {
-        Window win = e->xdestroywindow.window;
-        for (unsigned char d_idx = 0; d_idx < MAX_DESKTOPS; d_idx++) {
-                Desktop *d      = &desktops[d_idx];
-                short windowIdx = -1;
-                for (unsigned char i = 0; i < d->windowCount; i++) {
-                        if (d->windows[i] == win) {
-                                windowIdx = i;
-                                break;
-                        }
+    Window win = e->xdestroywindow.window;
+
+    for (unsigned char d_idx = 0; d_idx < MAX_DESKTOPS; d_idx++) {
+        Desktop *d = &desktops[d_idx];
+
+        for (unsigned char i = 0; i < d->windowCount; i++) {
+            if (d->windows[i] == win) {
+                removeWindowFromDesktop(win, d);
+                if (d_idx == currentDesktop) {
+                    tileWindows();
                 }
-                if (windowIdx != -1) {
-                        removeWindowFromDesktop(win, d);
-                        if (d_idx == currentDesktop) {
-                                tileWindows();
-                        }
-                }
+                return;
+            }
         }
+    }
 }
 static void cleanup(void) {
         for (unsigned char d = 0; d < MAX_DESKTOPS; d++) {
@@ -367,16 +359,7 @@ static void handleMapRequest(XEvent *e) {
                 XFlush(dpy);
         }
 }
-static void handleMapNotify(XEvent *e) {
-        XMapEvent *ev = &e->xmap;
-        for (unsigned char i = 0; i < CURRENT_DESKTOP.windowCount; i++) {
-                if (CURRENT_DESKTOP.windows[i] == ev->window) {
-                        tileWindows();
-                        return;
-                }
-        }
-        tileWindows();
-}
+
 static void switchDesktop(unsigned char desktop) {
         if (desktop == currentDesktop || desktop >= MAX_DESKTOPS) return;
         if (IsSwitching) return;
