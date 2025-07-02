@@ -52,8 +52,8 @@ static void setup(void);
 static void run(void);
 static void cleanup(void);
 static void handleKeyPress(XEvent *e);
-static void handleMapRequest(XEvent *e);
-static void handleDestroyNotify(XEvent *e);
+static void handleMapRequest(Window win);
+static void handleDestroyNotify(Window win);
 inline static void focusWindow(Window w);
 static void tileWindows(void);
 static void switchDesktop(unsigned char desktop);
@@ -107,7 +107,6 @@ static void setup(void) {
         Cursor cursor = XCreateFontCursor(dpy, 68);
         if (cursor == None) die();
         XDefineCursor(dpy, root, cursor);
-        XSetErrorHandler(xerror);
         grabKeys();
         XSync(dpy, False);
 }
@@ -144,7 +143,7 @@ static void run(void) {
                                         handleKeyPress(&e);
                                         break;
                                 case MapRequest:
-                                        handleMapRequest(&e);
+                                        handleMapRequest(e.xmaprequest.window);
                                         break;
                                 case UnmapNotify:
                                         if (IsSwitching) break;
@@ -152,7 +151,7 @@ static void run(void) {
                                         tileWindows();
                                         break;
                                 case DestroyNotify:
-                                        handleDestroyNotify(&e);
+                                        handleDestroyNotify(e.xdestroywindow.window);
                                         break;
                                 case ConfigureNotify:
                                         if (e.xconfigure.window != root) break;
@@ -286,12 +285,11 @@ static void removeWindowFromDesktop(Window win, Desktop *d) {
         }
         d->windowCount = write;
         if (write > 0) {
-                d->focusedIdx = 0;
-                focusWindow(d->windows[0]);
+                if (d->focusedIdx >= write) d->focusedIdx = write - 1;
+                focusWindow(d->windows[d->focusedIdx]);
         }
 }
-static void handleDestroyNotify(XEvent *e) {
-        Window win = e->xdestroywindow.window;
+static void handleDestroyNotify(Window win) {
         for (unsigned char d_idx = 0; d_idx < MAX_DESKTOPS; d_idx++) {
                 Desktop *d = &desktops[d_idx];
                 for (unsigned char i = 0; i < d->windowCount; i++) {
@@ -341,8 +339,7 @@ static void tileWindows(void) {
         }
         XRaiseWindow(dpy, CURRENT_DESKTOP.windows[CURRENT_DESKTOP.focusedIdx]);
 }
-static void handleMapRequest(XEvent *e) {
-        Window win = e->xmaprequest.window;
+static void handleMapRequest(Window win) {
         for (unsigned char i = 0; i < CURRENT_DESKTOP.windowCount; i++) {
                 if (CURRENT_DESKTOP.windows[i] == win) {
                         CURRENT_DESKTOP.focusedIdx = i;
@@ -366,14 +363,15 @@ static void handleMapRequest(XEvent *e) {
         }
 }
 static void switchDesktop(unsigned char newDesk) {
-        if (newDesk == currentDesktop || newDesk >= MAX_DESKTOPS || IsSwitching) return;
-        IsSwitching   = 1;
-        Desktop *old  = &desktops[currentDesktop];
-        Desktop *next = &desktops[newDesk];
-        for (unsigned int i = 0; i < old->windowCount; i++) XUnmapWindow(dpy, old->windows[i]);
-        currentDesktop = newDesk;
-        for (unsigned int i = 0; i < next->windowCount; i++) XMapWindow(dpy, next->windows[i]);
-        tileWindows();
-        if (next->windowCount > 0) focusWindow(next->windows[next->focusedIdx]);
-        IsSwitching = 0;
+    if (newDesk == currentDesktop || newDesk >= MAX_DESKTOPS || IsSwitching) return;
+    IsSwitching = 1;
+    for (unsigned int i = 0; i < CURRENT_DESKTOP.windowCount; i++)
+        XUnmapWindow(dpy, CURRENT_DESKTOP.windows[i]);
+    currentDesktop = newDesk;
+    for (unsigned int i = 0; i < CURRENT_DESKTOP.windowCount; i++)
+        XMapWindow(dpy, CURRENT_DESKTOP.windows[i]);
+    tileWindows();
+    if (CURRENT_DESKTOP.windowCount > 0)
+        focusWindow(CURRENT_DESKTOP.windows[CURRENT_DESKTOP.focusedIdx]);
+    IsSwitching = 0;
 }
