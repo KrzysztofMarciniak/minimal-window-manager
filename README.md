@@ -13,43 +13,39 @@ It was designed with the following guiding principles:
 
 ![screenshot](screenshot.png)
 ## Stats
+
 ```bash
-~/minimal-window-manager $ bloaty mwm 
-    FILE SIZE        VM SIZE    
- --------------  -------------- 
-  45.2%  10.0Ki   0.0%       0    [Unmapped]
-  14.0%  3.11Ki  30.3%  3.05Ki    .text
-   5.0%  1.12Ki  10.5%  1.05Ki    .dynsym
-   4.4%    1000   9.1%     936    .rela.plt
-   4.0%     899   2.4%     249    [14 Others]
-   3.5%     800   7.8%     800    [LOAD #2 [R]]
-   3.1%     704   6.2%     640    .plt
-   3.0%     688   6.1%     624    .plt.sec
-   3.0%     678   6.0%     614    .dynstr
-   2.5%     576   5.0%     512    .dynamic
-   2.2%     488   4.1%     424    .rodata
-   1.9%     440   3.7%     376    .got
-   1.9%     424   3.5%     360    .rela.dyn
-   1.4%     324   0.0%       0    .shstrtab
-   1.0%     224   1.6%     160    .eh_frame
-   0.7%     160   0.9%      96    .data.rel.ro
-   0.7%     154   0.9%      90    .gnu.version
-   0.6%     144   0.8%      80    .gnu.version_r
-   0.6%     144   0.8%      80    .note.gnu.property
-   0.6%     128   0.0%       0    [ELF Headers]
-   0.5%     116   0.5%      52    .eh_frame_hdr
- 100.0%  22.1Ki 100.0%  10.1Ki    TOTAL
-~/minimal-window-manager $ size mwm 
-   text    data     bss     dec     hex filename
-   8412    1024      40    9476    2504 mwm
-~/minimal-window-manager $ ldd mwm 
-        linux-vdso.so.1 (0x00007ffe73351000)
-        libX11.so.6 => /usr/lib64/libX11.so.6 (0x00007f18e8049000)
-        libc.so.6 => /usr/lib64/libc.so.6 (0x00007f18e7e5d000)
-        libxcb.so.1 => /usr/lib64/libxcb.so.1 (0x00007f18e7e30000)
-        /lib64/ld-linux-x86-64.so.2 (0x00007f18e81c6000)
-        libXau.so.6 => /usr/lib64/libXau.so.6 (0x00007f18e7e2a000)
-        libXdmcp.so.6 => /usr/lib64/libXdmcp.so.6 (0x00007f18e7e22000)
+        linux-vdso.so.1 (0x00007ffd11bb1000)
+        libX11.so.6 => /usr/lib64/libX11.so.6 (0x00007f8c0f5ad000)
+        libc.so.6 => /usr/lib64/libc.so.6 (0x00007f8c0f3c1000)
+        libxcb.so.1 => /usr/lib64/libxcb.so.1 (0x00007f8c0f394000)
+        /lib64/ld-linux-x86-64.so.2 (0x00007f8c0f72a000)
+        libXau.so.6 => /usr/lib64/libXau.so.6 (0x00007f8c0f38e000)
+        libXdmcp.so.6 => /usr/lib64/libXdmcp.so.6 (0x00007f8c0f386000)
+    FILE SIZE        VM SIZE
+ --------------  --------------
+  32.3%  5.85Ki   0.0%       0    [Unmapped]
+  19.3%  3.50Ki  30.6%  3.44Ki    .text
+   5.9%  1.07Ki   9.0%  1.01Ki    .dynsym
+   0.0%       0   9.3%  1.05Ki    .bss
+   5.6%  1.01Ki   2.5%     293    [14 Others]
+   5.1%     952   7.7%     888    .rela.plt
+   4.3%     800   7.0%     800    [LOAD #2 [R]]
+   3.6%     672   5.3%     608    .plt
+   3.6%     666   5.2%     602    .dynstr
+   3.5%     656   5.1%     592    .plt.sec
+   3.1%     576   4.5%     512    .dynamic
+   2.3%     424   3.1%     360    .got
+   2.3%     424   3.1%     360    .rela.dyn
+   2.3%     424   3.1%     360    .rodata
+   1.7%     324   0.0%       0    .shstrtab
+   1.2%     224   1.4%     160    .eh_frame
+   0.9%     160   0.8%      96    .data.rel.ro
+   0.8%     150   0.7%      86    .gnu.version
+   0.8%     144   0.7%      80    .gnu.version_r
+   0.8%     144   0.7%      80    .note.gnu.property
+   0.7%     128   0.0%       0    [ELF Headers]
+ 100.0%  18.1Ki 100.0%  11.2Ki    TOTAL
 ```
 
 ## Getting Started
@@ -129,4 +125,4 @@ sudo make install_compressed
 4. Add to xinitrc:
 ```bash
 exec dbus-launch --sh-syntax --exit-with-session mwm.upx
-```
+```   text	   data	    bss	    dec	    hex	filename
