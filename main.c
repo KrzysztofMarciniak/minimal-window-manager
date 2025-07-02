@@ -287,9 +287,8 @@ static void moveWindowToDesktop(Window win, unsigned char desktop) {
         }
 }
 inline static void focusWindow(Window w) {
-        if (w != None) {
-                XSetInputFocus(dpy, w, RevertToParent, CurrentTime);
-        }
+        if (w == None) return;
+        XSetInputFocus(dpy, w, RevertToParent, CurrentTime);
 }
 static void removeWindowFromDesktop(Window win, Desktop *d) {
         unsigned int write     = 0;
