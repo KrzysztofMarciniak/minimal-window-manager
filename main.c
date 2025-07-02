@@ -49,6 +49,7 @@ static short resizeDelta[MAX_DESKTOPS] = {0};
 // screen resolution fits within 0–65,535 range, too large for unsigned char
 // (0–255) but safe in unsigned short
 static unsigned short screen_width, screen_height;
+static _Bool need_flush = False;
 
 static void setup(void);
 static void run(void);
@@ -165,6 +166,10 @@ static void run(void) {
                                         break;
                         }
                 }
+                if (need_flush) {
+                        XFlush(dpy);
+                        need_flush = False;
+                }
                 FD_ZERO(&fds);
                 FD_SET(xfd, &fds);
                 if (select(xfd + 1, &fds, NULL, NULL, NULL) == -1) {
@@ -196,14 +201,15 @@ static void killFocusedWindow(void) {
                                 ev.xclient.data.l[1]    = CurrentTime;
                                 XSendEvent(dpy, win, False, NoEventMask, &ev);
                                 XFree(protocols);
-                                XFlush(dpy);
+                                need_flush = True;
+
                                 return;
                         }
                 }
                 XFree(protocols);
         }
         XKillClient(dpy, win);
-        XFlush(dpy);
+        need_flush = True;
 }
 inline static void focusCycleWindow(_Bool forward) {
         if (CURRENT_DESKTOP.windowCount <= 1) return;
@@ -379,7 +385,7 @@ static void handleMapRequest(Window win) {
                 tileWindows();
         } else {
                 XKillClient(dpy, win);
-                XFlush(dpy);
+                need_flush = True;
         }
 }
 static void switchDesktop(unsigned char newDesk) {
