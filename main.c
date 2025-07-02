@@ -67,6 +67,7 @@ inline static void focusCycleWindow(_Bool);// 1 bit
 static void removeWindowFromDesktop(Window win, Desktop *d);
 inline static void die(void);
 int main(void) {
+        signal(SIGCHLD, SIG_IGN);
         signal(SIGTERM, sigHandler);
         signal(SIGINT, sigHandler);
         setup();
