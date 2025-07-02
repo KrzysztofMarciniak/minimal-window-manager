@@ -166,10 +166,10 @@ static void run(void) {
                                         break;
                         }
                 }
-                if (need_flush) {
-                        XFlush(dpy);
-                        need_flush = False;
-                }
+        if (need_flush) {
+            XFlush(dpy);
+            need_flush = False;
+        }
                 FD_ZERO(&fds);
                 FD_SET(xfd, &fds);
                 if (select(xfd + 1, &fds, NULL, NULL, NULL) == -1) {
@@ -201,7 +201,7 @@ static void killFocusedWindow(void) {
                                 ev.xclient.data.l[1]    = CurrentTime;
                                 XSendEvent(dpy, win, False, NoEventMask, &ev);
                                 XFree(protocols);
-                                need_flush = True;
+need_flush = True;
 
                                 return;
                         }
