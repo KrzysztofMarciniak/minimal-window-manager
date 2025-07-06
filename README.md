@@ -1,5 +1,9 @@
 # Minimal Window Manager (MWM)
 
+
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15824542.svg)](https://doi.org/10.5281/zenodo.15824542)
+
+
 <img src="https://github.com/user-attachments/assets/b6e484eb-5b16-4d88-b6f6-e14f968e2d1d" alt="MWM" width="250" height="250">
 
 MWM (Minimal Window Manager) is a lightweight, minimalistic window manager written in **C**.
