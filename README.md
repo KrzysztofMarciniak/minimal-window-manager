@@ -131,4 +131,3 @@ sudo make install_compressed
 4. Add to xinitrc:
 ```bash
 exec dbus-launch --sh-syntax --exit-with-session mwm.upx
-```   text	   data	    bss	    dec	    hex	filename
