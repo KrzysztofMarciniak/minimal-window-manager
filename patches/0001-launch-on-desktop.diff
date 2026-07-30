@@ -1,0 +1,75 @@
+--- main.c	2026-07-30 18:24:43.221611083 +0200
++++ main.c	2026-07-30 18:46:46.015398388 +0200
+@@ -13,21 +13,24 @@
+ #define CURRENT_DESKTOP desktops[currentDesktop]
+ #define DESKTOPS desktops
+ #define MOD_KEY Mod4Mask
++#define NO_DESKTOP 0xFF
+ #ifndef AUDIO_SCRIPT
+ #define AUDIO_SCRIPT ""
+ #endif
+ typedef struct {
+         KeySym keysym;
+         const char *command;
++        unsigned char targetDesktop;
+ } AppLauncher;
+-static AppLauncher launchers[6] = {{XK_Return, "st"},
++static AppLauncher launchers[6] = {{XK_Return, "st", 0},
+                                    {XK_p,
+                                     "dmenu_run -m '0' -nb '#000000' -nf '#ffffff' -sb "
+-                                    "'#ffffff' -sf '#000000'"},
+-                                   {XF86XK_AudioRaiseVolume, AUDIO_SCRIPT " +"},
+-                                   {XF86XK_AudioLowerVolume, AUDIO_SCRIPT " -"},
+-                                   {XF86XK_AudioMicMute, AUDIO_SCRIPT " mic"},
+-                                   {XF86XK_AudioMute, AUDIO_SCRIPT " aud"}};
++                                    "'#ffffff' -sf '#000000'",
++                                    NO_DESKTOP},
++                                   {XF86XK_AudioRaiseVolume, AUDIO_SCRIPT " +", NO_DESKTOP},
++                                   {XF86XK_AudioLowerVolume, AUDIO_SCRIPT " -", NO_DESKTOP},
++                                   {XF86XK_AudioMicMute, AUDIO_SCRIPT " mic", NO_DESKTOP},
++                                   {XF86XK_AudioMute, AUDIO_SCRIPT " aud", NO_DESKTOP}};
+ typedef struct {
+         Window windows[MAX_WINDOWS_PER_DESKTOP];
+         _Bool isMapped[MAX_WINDOWS_PER_DESKTOP];
+@@ -133,7 +136,7 @@
+                 grabKey(wmKeys[i], MOD_KEY, True);
+         }
+         for (unsigned char i = 0; i < ARRAY_LEN(launchers); ++i) {
+-                grabKey(launchers[i].keysym, MOD_KEY, False);
++                grabKey(launchers[i].keysym, MOD_KEY, launchers[i].targetDesktop != NO_DESKTOP);
+         }
+ }
+ static void run(void) {
+@@ -256,18 +259,23 @@
+                 return;
+         }
+         for (unsigned int i = 0; i < ARRAY_LEN(launchers); i++) {
+-                if (keysym == launchers[i].keysym && state == MOD_KEY) {
++                if (keysym != launchers[i].keysym) continue;
++                if (state == (MOD_KEY | ShiftMask)) {
++                        if (launchers[i].targetDesktop == NO_DESKTOP) return;
++                        switchDesktop(launchers[i].targetDesktop);
++                } else if (state != MOD_KEY) {
++                        continue;
++                }
++                if (fork() == 0) {
+                         if (fork() == 0) {
+-                                if (fork() == 0) {
+-                                        setsid();
+-                                        for (int fd = 0; fd <= 2; fd++) close(fd);
+-                                        execl("/bin/sh", "sh", "-c", launchers[i].command, NULL);
+-                                        _exit(EXIT_FAILURE);
+-                                }
+-                                _exit(EXIT_SUCCESS);
++                                setsid();
++                                for (int fd = 0; fd <= 2; fd++) close(fd);
++                                execl("/bin/sh", "sh", "-c", launchers[i].command, NULL);
++                                _exit(EXIT_FAILURE);
+                         }
+-                        return;
++                        _exit(EXIT_SUCCESS);
+                 }
++                return;
+         }
+ }
+ static void moveWindowToDesktop(Window win, unsigned char desktop) {
