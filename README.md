@@ -1,76 +1,87 @@
 # Minimal Window Manager (MWM)
 
-
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15824542.svg)](https://doi.org/10.5281/zenodo.15824542)
-
 
 <img src="https://github.com/user-attachments/assets/b6e484eb-5b16-4d88-b6f6-e14f968e2d1d" alt="MWM" width="250" height="250">
 
-MWM (Minimal Window Manager) is a lightweight, minimalistic window manager written in **C**.
- 
-It was designed with the following guiding principles:
-* < 500 lines of code (clang-formatted).
-* 9 Desktops.
-* High Performance.
-* No status bar, Borders or Gaps. [(if you want them, use mwm+)](https://github.com/KrzysztofMarciniak/minimal-window-manager-plus)
-* No floating windows.
-* No compiler warnings, clean builds only.
-* One file.
+MWM is a lightweight X11 tiling window manager written in C. Its core is a
+single source file and provides nine workspaces, keyboard-driven window
+management, and no floating windows, status bar, borders, or gaps. For a
+window manager with those features, see
+[MWM+](https://github.com/KrzysztofMarciniak/minimal-window-manager-plus).
 
 ![screenshot](screenshot.png)
-## Stats
 
-```bash
-        linux-vdso.so.1 (0x00007ffd11bb1000)
-        libX11.so.6 => /usr/lib64/libX11.so.6 (0x00007f8c0f5ad000)
-        libc.so.6 => /usr/lib64/libc.so.6 (0x00007f8c0f3c1000)
-        libxcb.so.1 => /usr/lib64/libxcb.so.1 (0x00007f8c0f394000)
-        /lib64/ld-linux-x86-64.so.2 (0x00007f8c0f72a000)
-        libXau.so.6 => /usr/lib64/libXau.so.6 (0x00007f8c0f38e000)
-        libXdmcp.so.6 => /usr/lib64/libXdmcp.so.6 (0x00007f8c0f386000)
-    FILE SIZE        VM SIZE
- --------------  --------------
-  32.3%  5.85Ki   0.0%       0    [Unmapped]
-  19.3%  3.50Ki  30.6%  3.44Ki    .text
-   5.9%  1.07Ki   9.0%  1.01Ki    .dynsym
-   0.0%       0   9.3%  1.05Ki    .bss
-   5.6%  1.01Ki   2.5%     293    [14 Others]
-   5.1%     952   7.7%     888    .rela.plt
-   4.3%     800   7.0%     800    [LOAD #2 [R]]
-   3.6%     672   5.3%     608    .plt
-   3.6%     666   5.2%     602    .dynstr
-   3.5%     656   5.1%     592    .plt.sec
-   3.1%     576   4.5%     512    .dynamic
-   2.3%     424   3.1%     360    .got
-   2.3%     424   3.1%     360    .rela.dyn
-   2.3%     424   3.1%     360    .rodata
-   1.7%     324   0.0%       0    .shstrtab
-   1.2%     224   1.4%     160    .eh_frame
-   0.9%     160   0.8%      96    .data.rel.ro
-   0.8%     150   0.7%      86    .gnu.version
-   0.8%     144   0.7%      80    .gnu.version_r
-   0.8%     144   0.7%      80    .note.gnu.property
-   0.7%     128   0.0%       0    [ELF Headers]
- 100.0%  18.1Ki 100.0%  11.2Ki    TOTAL
+## Requirements
+
+- A C compiler, `make`, and X11 development headers and libraries.
+- Optional: `st` as the terminal and `dmenu` as the application launcher.
+
+The default build checks for `st` and `dmenu`. If either is missing, it asks
+before cloning, building, and installing the missing program from Suckless.
+`st` requires `tic`, `pkg-config`, and Xft, fontconfig, and freetype development
+files. `dmenu`'s default configuration requires Xinerama development files.
+Install the corresponding packages for your OS before accepting the prompt.
+Set `SUDO` to your privilege command and `PREFIX` to the install prefix if
+needed.
+
+## Build and install
+
+```sh
+git clone https://github.com/KrzysztofMarciniak/minimal-window-manager.git
+cd minimal-window-manager
+make
+sudo make install
 ```
 
-## Getting Started
+The Makefile supports GNU make and BSD make. Override compiler and install
+settings as needed:
 
-### Media Keys
-Below are two examples for handling media keys. You can modify these to suit your needs. To use them out of the box, you will need [herbe](https://github.com/dudik/herbe), or modify (`notifications_daemon="/usr/local/bin/herbe"` - .sh) or (`#define NOTIFICATIONS_DAEMON "/usr/local/bin/herbe"` - .c)
-Makefile:
-```bash
-make AUDIO_SCRIPT="$(pwd)/audio.sh"
+```sh
+make CC=clang CFLAGS="-O2 -pipe" PREFIX=/usr/local
 ```
-or build the native helper:
-```bash
+
+To stage MWM under a package root, use `DESTDIR`:
+
+```sh
+make DESTDIR=/package-root PREFIX=/usr install
+```
+
+Available targets:
+
+| Target | Purpose |
+| --- | --- |
+| `make audio` | Create an executable `./audio` copy of `audio.sh` |
+| `make clean` | Remove generated MWM and audio files |
+| `make install_compressed` | Compress MWM with UPX, then install it |
+
+The audio script is optional. By default, MWM uses `audio.sh` for media-key
+bindings. To use the generated `audio` helper instead, build it and rebuild
+MWM with its path:
+
+```sh
+make clean
 make audio
 make AUDIO_SCRIPT="$(pwd)/audio"
 ```
 
-### Keyboard Shortcuts
+The audio script expects ALSA's `amixer` and, for notifications, `herbe`.
+Change the `notifications_daemon` path in `audio.sh` to match your system.
 
-#### Window Management
+## Start MWM
+
+Add MWM to your X session startup, for example in `~/.xinitrc`:
+
+```sh
+exec mwm
+```
+
+If your session needs D-Bus, use your system's D-Bus session launcher.
+
+## Keyboard shortcuts
+
+### Window management
+
 - **Mod + Enter**: Launch terminal
 - **Mod + q**: Close focused window
 - **Mod + Shift + q**: Exit MWM
@@ -79,65 +90,11 @@ make AUDIO_SCRIPT="$(pwd)/audio"
 - **Mod + Shift + l**: Increase window size
 - **Mod + Shift + h**: Decrease window size
 
-#### Desktop Navigation
+### Desktop navigation
+
 - **Mod + [0-9]**: Switch to desktop [0-9]
 - **Mod + Shift + [0-9]**: Move focused window to desktop [0-9]
 
-#### Application Launcher
-- **Mod + p**: Launch dmenu (application menu)
+### Application launcher
 
-## Prerequisites
-To build and run MWM, you'll need:
-- A C compiler (e.g., `cc`, `clang`, or `gcc`).
-- `make` for building the project.
-- An X11 development environment (for example, `libX11` headers and library)
-  on Linux or a BSD with X11 installed.
-
-Optional, but recommended:
-- `st` (simple terminal).
-- `dmenu` (for launching applications).
-
-### Building the Project
-#### default (`recommended`) (lower in runtime memory but bigger disk size.):
-1. Clone the repository:
-```bash
-git clone https://github.com/KrzysztofMarciniak/minimal-window-manager.git
-```
-2. Navigate to the project directory: 
-```bash
-cd minimal-window-manager
-```
-3. Install:
-```bash
-sudo make install
-```
-4. Add to xinitrc:
-
-```bash
-exec dbus-launch --sh-syntax --exit-with-session mwm
-```
-
-The Makefile works with GNU make and BSD make. Its toolchain and installation
-settings can be overridden for local platforms:
-
-```bash
-make CC=clang CFLAGS="-O2 -pipe" PREFIX=/usr/local
-sudo make DESTDIR=/package-root PREFIX=/usr install
-```
-#### compressed (higher in runtime memory, smaller in disk size.):
-0. You have to install [upx](https://github.com/upx/upx).
-1. Clone the repository:
-```bash
-git clone https://github.com/KrzysztofMarciniak/minimal-window-manager.git
-```
-2. Navigate to the project directory: 
-```bash
-cd minimal-window-manager
-```
-3. Install the compressed version:
-```bash
-sudo make install_compressed
-```
-4. Add to xinitrc:
-```bash
-exec dbus-launch --sh-syntax --exit-with-session mwm.upx
+- **Mod + p**: Launch `dmenu`
