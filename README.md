@@ -60,11 +60,12 @@ It was designed with the following guiding principles:
 Below are two examples for handling media keys. You can modify these to suit your needs. To use them out of the box, you will need [herbe](https://github.com/dudik/herbe), or modify (`notifications_daemon="/usr/local/bin/herbe"` - .sh) or (`#define NOTIFICATIONS_DAEMON "/usr/local/bin/herbe"` - .c)
 Makefile:
 ```bash
--DAUDIO_SCRIPT="\"$(shell pwd)/audio.sh\""
+make AUDIO_SCRIPT="$(pwd)/audio.sh"
 ```
-or (after compiling `gcc audio.c -o audio`):
+or build the native helper:
 ```bash
--DAUDIO_SCRIPT="\"$(shell pwd)/audio\""
+make audio
+make AUDIO_SCRIPT="$(pwd)/audio"
 ```
 
 ### Keyboard Shortcuts
@@ -87,9 +88,10 @@ or (after compiling `gcc audio.c -o audio`):
 
 ## Prerequisites
 To build and run MWM, you'll need:
-- A C compiler (e.g., `gcc`).
+- A C compiler (e.g., `cc`, `clang`, or `gcc`).
 - `make` for building the project.
-- A Linux-based environment with X11 support.
+- An X11 development environment (for example, `libX11` headers and library)
+  on Linux or a BSD with X11 installed.
 
 Optional, but recommended:
 - `st` (simple terminal).
@@ -113,6 +115,14 @@ sudo make install
 
 ```bash
 exec dbus-launch --sh-syntax --exit-with-session mwm
+```
+
+The Makefile works with GNU make and BSD make. Its toolchain and installation
+settings can be overridden for local platforms:
+
+```bash
+make CC=clang CFLAGS="-O2 -pipe" PREFIX=/usr/local
+sudo make DESTDIR=/package-root PREFIX=/usr install
 ```
 #### compressed (higher in runtime memory, smaller in disk size.):
 0. You have to install [upx](https://github.com/upx/upx).

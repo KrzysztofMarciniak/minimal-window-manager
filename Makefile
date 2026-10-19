@@ -1,27 +1,42 @@
-CC = gcc
-CFLAGS = -Wall -Wextra -pedantic -O3 -fno-asynchronous-unwind-tables -fno-unwind-tables -march=native -flto -ffast-math -fomit-frame-pointer -ffunction-sections -fdata-sections -Os -DAUDIO_SCRIPT="\"$(shell pwd)/audio.sh\""
-LDFLAGS = -lX11 -s -Wl,--gc-sections -Wl,--as-needed -Wl,-O1
-TARGET = mwm
-SRC = main.c
-PREFIX = /usr/local
-DESTDIR =
+CC ?= cc
+CFLAGS ?= -O2
+CFLAGS += -Wall -Wextra -pedantic
+CPPFLAGS ?=
+LDFLAGS ?=
+LDLIBS ?= -lX11
+
+TARGET ?= mwm
+SRC ?= main.c
+PREFIX ?= /usr/local
+DESTDIR ?=
+INSTALL ?= install
+INSTALL_PROGRAM ?= $(INSTALL) -m 755
+RM ?= rm -f
+
+# PWD is provided by POSIX shells and avoids GNU make's non-portable
+# $(shell ...) function. Override AUDIO_SCRIPT for a different location.
+AUDIO_SCRIPT ?= $(PWD)/audio.sh
+CPPFLAGS += -DAUDIO_SCRIPT=\"$(AUDIO_SCRIPT)\"
 
 all: $(TARGET)
 
 $(TARGET): $(SRC)
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $(SRC) $(LDLIBS)
+
+audio: audio.c
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ audio.c
 
 install: $(TARGET)
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
-	install -m 755 $(TARGET) $(DESTDIR)$(PREFIX)/bin/
+	$(INSTALL_PROGRAM) $(TARGET) $(DESTDIR)$(PREFIX)/bin/$(TARGET)
 
 install_compressed: $(TARGET)
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
 	$(MAKE) compress
-	install -m 755 $(TARGET).upx $(DESTDIR)$(PREFIX)/bin/
+	$(INSTALL_PROGRAM) $(TARGET).upx $(DESTDIR)$(PREFIX)/bin/$(TARGET).upx
 
 compress: $(TARGET)
-	@if command -v upx > /dev/null 2>&1; then \
+	@if command -v upx >/dev/null 2>&1; then \
 		if upx -t $(TARGET) > /dev/null 2>&1; then \
 			echo "$(TARGET) is already packed, skipping compression."; \
 		else \
@@ -35,10 +50,10 @@ compress: $(TARGET)
 	fi
 
 uninstall:
-	rm -f $(DESTDIR)$(PREFIX)/bin/$(TARGET)
-	rm -f $(DESTDIR)$(PREFIX)/bin/$(TARGET).upx
+	$(RM) $(DESTDIR)$(PREFIX)/bin/$(TARGET)
+	$(RM) $(DESTDIR)$(PREFIX)/bin/$(TARGET).upx
 
 clean:
-	rm -f $(TARGET) $(TARGET).upx
+	$(RM) $(TARGET) $(TARGET).upx audio
 
 .PHONY: all install install_compressed compress uninstall clean
