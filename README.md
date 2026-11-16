@@ -36,7 +36,10 @@ cd minimal-window-manager
 make
 sudo make install
 ```
-
+Or simply:
+```sh
+cc -DAUDIO_SCRIPT=\"$(pwd)/audio.sh\" -O2 -Wall -Wextra -pedantic -o mwm main.c -lX11
+```
 The Makefile supports GNU make and BSD make. Override compiler and install
 settings as needed:
 
