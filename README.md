@@ -12,6 +12,9 @@ window manager with those features, see
 
 ![screenshot](screenshot.png)
 
+## xxt
+I have also written a 400 line X11 terminal emulator, available at [xxt](https://github.com/KrzysztofMarciniak/xxt).
+
 ## Requirements
 
 - A C compiler, `make`, and X11 development headers and libraries.
